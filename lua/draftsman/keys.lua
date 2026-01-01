@@ -1,8 +1,8 @@
-local state = require("diagram.state")
-local actions = require("diagram.actions")
-local ui = require("diagram.ui")
-local canvas = require("diagram.canvas")
-local config = require("diagram.config")
+local state = require("draftsman.state")
+local actions = require("draftsman.actions")
+local ui = require("draftsman.ui")
+local canvas = require("draftsman.canvas")
+local config = require("draftsman.config")
 
 local M = {}
 

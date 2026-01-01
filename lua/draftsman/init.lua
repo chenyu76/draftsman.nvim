@@ -19,7 +19,7 @@ function M.start()
 	state.active = true
 	state.original_ve = vim.o.virtualedit
 	vim.o.virtualedit = "all"
-	state.ns_id = vim.api.nvim_create_namespace("diagram_mode_markers")
+	state.ns_id = vim.api.nvim_create_namespace("draftsman_markers")
 
 	-- Disable interfering plugins temporarily
 	local integrations = config.options.integrations or config.defaults.integrations

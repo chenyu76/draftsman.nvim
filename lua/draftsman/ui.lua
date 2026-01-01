@@ -1,5 +1,5 @@
-local state = require("diagram.state")
-local config = require("diagram.config")
+local state = require("draftsman.state")
+local config = require("draftsman.config")
 local M = {}
 
 function M.update_status(msg)
@@ -148,7 +148,7 @@ function M.update_start_marker()
 	end
 	if (state.mode == "select" or state.mode == "box") and state.box_start then
 		local r, c = state.box_start[1], state.box_start[2]
-		local start_b, _, _ = require("diagram.canvas").get_byte_range(r, c)
+		local start_b, _, _ = require("draftsman.canvas").get_byte_range(r, c)
 		if start_b then
 			local opts = { id = 1, priority = 200, virt_text_pos = "overlay", virt_text = { { "⊕", "MatchParen" } } }
 			vim.api.nvim_buf_set_extmark(0, state.ns_id, r - 1, start_b, opts)

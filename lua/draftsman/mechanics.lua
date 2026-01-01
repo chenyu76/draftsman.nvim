@@ -1,6 +1,6 @@
-local config = require("diagram.config")
-local state = require("diagram.state")
-local C = require("diagram.constants")
+local config = require("draftsman.config")
+local state = require("draftsman.state")
+local C = require("draftsman.constants")
 local BIT = C.BIT
 
 local M = {}
