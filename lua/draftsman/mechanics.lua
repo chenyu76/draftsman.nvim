@@ -73,6 +73,7 @@ function M.init_styles()
 	state.char_to_mask["+"] = 15
 end
 
+-- Resolve the character for a given bitmask, with optional additions/removals
 function M.resolve_char(current_mask, add_bits, remove_mask)
 	if remove_mask and remove_mask > 0 then
 		current_mask = bit.band(current_mask, bit.bnot(remove_mask))
@@ -80,6 +81,47 @@ function M.resolve_char(current_mask, add_bits, remove_mask)
 	local final_mask = bit.bor(current_mask, add_bits)
 	local palette = state.parsed_styles[state.style_idx].lines
 	return palette[final_mask]
+end
+
+function M.char_to_direction(char)
+	return M.mask_to_direction(state.char_to_mask[char])
+end
+
+function M.mask_to_direction(mask)
+	if not mask then
+		return {}
+	end
+
+	local directions = {}
+	if bit.band(mask, BIT.U) > 0 then
+		table.insert(directions, "k")
+	end
+	if bit.band(mask, BIT.R) > 0 then
+		table.insert(directions, "l")
+	end
+	if bit.band(mask, BIT.D) > 0 then
+		table.insert(directions, "j")
+	end
+	if bit.band(mask, BIT.L) > 0 then
+		table.insert(directions, "h")
+	end
+
+	return directions
+end
+
+function M.direction_to_coord(direction, r, c)
+	r = r or 0
+	c = c or 0
+	if direction == "h" then
+		return r, c - 1
+	elseif direction == "j" then
+		return r + 1, c
+	elseif direction == "k" then
+		return r - 1, c
+	elseif direction == "l" then
+		return r, c + 1
+	end
+	return r, c
 end
 
 return M

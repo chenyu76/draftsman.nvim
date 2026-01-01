@@ -4,6 +4,14 @@ function M.get_virt_col()
 	return vim.fn.virtcol(".") - 1
 end
 
+function M.get_virt_row()
+	return vim.fn.line(".")
+end
+
+function M.get_cursor_virt_pos()
+	return M.get_virt_row(), M.get_virt_col()
+end
+
 function M.goto_virt_pos(row, virt_col)
 	local line_count = vim.api.nvim_buf_line_count(0)
 	if row > line_count then
@@ -92,6 +100,14 @@ function M.set_char_at(row, virt_col, char)
 
 	vim.api.nvim_buf_set_text(0, row - 1, start_b, row - 1, end_b or 0, { char })
 	M.goto_virt_pos(cur_r, cur_c)
+end
+
+function M.get_char_at_cursor()
+	return M.get_char_at(M.get_virt_row(), M.get_virt_col())
+end
+
+function M.set_char_at_cursor(char)
+	M.set_char_at(M.get_virt_row(), M.get_virt_col(), char)
 end
 
 return M

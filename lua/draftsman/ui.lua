@@ -1,5 +1,6 @@
 local state = require("draftsman.state")
 local config = require("draftsman.config")
+local canvas = require("draftsman.canvas")
 local M = {}
 
 function M.update_status(msg)
@@ -14,6 +15,7 @@ function M.update_status(msg)
 	end
 
 	local style_lines = (config.options.styles or config.defaults.styles)[state.style_idx]
+
 	local display_lines = {
 		"Current Style:",
 		"  " .. style_lines[1],
@@ -22,10 +24,14 @@ function M.update_status(msg)
 		"  " .. style_lines[4],
 		"Status:",
 		"  " .. info,
-		"Info:",
-		"  " .. msg,
-		"Clipboard:",
+		"Message:",
 	}
+	-- msg may contain multiple lines, so we need to split it first
+	local msg_lines = vim.split(tostring(msg), "\n", { plain = true })
+	for _, line in ipairs(msg_lines) do
+		table.insert(display_lines, "  " .. line)
+	end
+	table.insert(display_lines, "Clipboard:")
 
 	if state.clipboard then
 		table.insert(display_lines, string.format("  Size: %dx%d", state.clipboard.width, state.clipboard.height))
@@ -70,6 +76,7 @@ function M.update_content()
 			" [ ]   Commit",
 			"",
 			"Editing Tools:",
+			" [m]   Move Edge",
 			" [x]   Clear Char",
 			" [BS]  Backspace",
 			" [v]   Select Start",
@@ -121,8 +128,9 @@ function M.open_sidebar()
 
 	vim.api.nvim_win_call(state.sidebar_win, function()
 		vim.fn.matchadd("Special", "\\[.\\{-}\\]")
-		vim.fn.matchadd("Keyword", "- DIAGRAM MODE -")
-		vim.fn.matchadd("Keyword", "---- STATUS ----")
+		vim.fn.matchadd("Title", "- DIAGRAM MODE -")
+		vim.fn.matchadd("Title", "---- STATUS ----")
+		vim.fn.matchadd("Function", "^.*:")
 	end)
 
 	vim.api.nvim_set_option_value("number", false, { win = state.sidebar_win })
@@ -148,9 +156,15 @@ function M.update_start_marker()
 	end
 	if (state.mode == "select" or state.mode == "box") and state.box_start then
 		local r, c = state.box_start[1], state.box_start[2]
-		local start_b, _, _ = require("draftsman.canvas").get_byte_range(r, c)
+		local start_b, _, _ = canvas.get_byte_range(r, c)
 		if start_b then
 			local opts = { id = 1, priority = 200, virt_text_pos = "overlay", virt_text = { { "⊕", "MatchParen" } } }
+			-- fill space if needed
+			-- or nvim_buf_set_extmark will throw error
+			-- NOTE: get_char_at return " " if out of bounds
+			if canvas.get_char_at(r, start_b) == " " then
+				canvas.set_char_at(r, start_b, " ")
+			end
 			vim.api.nvim_buf_set_extmark(0, state.ns_id, r - 1, start_b, opts)
 		end
 	end

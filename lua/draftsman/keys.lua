@@ -18,7 +18,7 @@ function M.set_mappings(stop_callback)
 	local function map_hybrid(key, cmd_callback)
 		safe_map(key, function()
 			if state.mode == "text" then
-				canvas.set_char_at(vim.fn.line("."), canvas.get_virt_col(), key)
+				canvas.set_char_at_cursor(key)
 				vim.cmd("normal! l")
 			else
 				cmd_callback()
@@ -43,18 +43,22 @@ function M.set_mappings(stop_callback)
 	map_hybrid("?", ui.toggle_help)
 	map_hybrid("e", function()
 		state.mode, state.last_dir = "edge", nil
-		ui.update_status("Edge Mode")
+		ui.update_status("Edge Mode.\n[Space] to commit.")
 	end)
 	map_hybrid("a", function()
 		state.mode, state.last_dir = "arrow", nil
-		ui.update_status("Arrow Mode")
+		ui.update_status("Arrow Mode.\n[Space] to commit.")
+	end)
+	map_hybrid("m", function()
+		state.mode = "move"
+		ui.update_status("Move Mode.\n[Space] to commit.")
 	end)
 	map_hybrid("i", function()
 		state.mode = "text"
-		ui.update_status("Text Input")
+		ui.update_status("Text Input.\n[Space] to commit.")
 	end)
 	map_hybrid("x", function()
-		canvas.set_char_at(vim.fn.line("."), canvas.get_virt_col(), " ")
+		canvas.set_char_at_cursor(" ")
 	end)
 
 	-- Box/Select
@@ -63,17 +67,17 @@ function M.set_mappings(stop_callback)
 			actions.draw_box_commit()
 		else
 			state.mode = "box"
-			state.box_start = { vim.fn.line("."), canvas.get_virt_col() }
+			state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 			ui.update_start_marker()
-			ui.update_status("Box Start")
+			ui.update_status("Box Draw. \n[Space] to commit.")
 		end
 	end)
 
 	map_hybrid("v", function()
 		state.mode = "select"
-		state.box_start = { vim.fn.line("."), canvas.get_virt_col() }
+		state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 		ui.update_start_marker()
-		ui.update_status("Select Start")
+		ui.update_status("Select. \n[d] to delete. \n[y] to yank. \n[Space] to cancel.")
 	end)
 
 	-- Clipboard
@@ -81,14 +85,14 @@ function M.set_mappings(stop_callback)
 		if state.mode == "select" then
 			actions.cut_selection()
 		else
-			ui.update_status("Use 'v' first")
+			ui.update_status("Nothing to delete.\nUse [v] first")
 		end
 	end)
 	map_hybrid("y", function()
 		if state.mode == "select" then
 			actions.copy_selection()
 		else
-			ui.update_status("Use 'v' first")
+			ui.update_status("Nothing to yank.\nUse [v] first")
 		end
 	end)
 	map_hybrid("p", actions.paste_clipboard)
@@ -104,7 +108,7 @@ function M.set_mappings(stop_callback)
 	-- Undo/Redo
 	safe_map("u", function()
 		if state.mode == "text" then
-			canvas.set_char_at(vim.fn.line("."), canvas.get_virt_col(), "u")
+			canvas.set_char_at_cursor("u")
 			vim.cmd("normal! l")
 		else
 			vim.cmd("undo")
@@ -115,7 +119,7 @@ function M.set_mappings(stop_callback)
 		vim.cmd("redo")
 	end)
 	safe_map("<BS>", function()
-		local r, c = vim.fn.line("."), canvas.get_virt_col()
+		local r, c = canvas.get_cursor_virt_pos()
 		if c > 0 then
 			canvas.set_char_at(r, c - 1, " ")
 			canvas.goto_virt_pos(r, c - 1)
@@ -154,7 +158,7 @@ function M.set_mappings(stop_callback)
 		if not mapped_chars[c] then
 			safe_map(c, function()
 				if state.mode == "text" then
-					canvas.set_char_at(vim.fn.line("."), canvas.get_virt_col(), c)
+					canvas.set_char_at_cursor(c)
 					vim.cmd("normal! l")
 				end
 			end)
