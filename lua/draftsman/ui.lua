@@ -69,35 +69,35 @@ function M.update_content()
 	if state.show_help then
 		local help_items = {
 			"Base Tools:",
-			" [a]   Arrow",
-			" [e]   Edge (Line)",
-			" [b]   Box (Rect)",
-			" [i]   Text Insert",
-			" [ ]   Commit",
+			" <a>   Arrow",
+			" <e>   Edge (Line)",
+			" <b>   Box (Rect)",
+			" <i>   Text Insert",
+			" < >   Commit",
 			"",
 			"Editing Tools:",
-			" [m]   Move Edge",
-			" [x]   Clear Char",
-			" [BS]  Backspace",
-			" [v]   Select Start",
-			" [d]   Delete",
-			" [y]   Yank",
-			" [p]   Paste",
-			" [o/O] New Line",
+			" <m>   Move Edge",
+			" <x>   Clear Char",
+			" <BS>  Backspace",
+			" <v>   Select Start",
+			" <d>   Delete",
+			" <y>   Yank",
+			" <p>   Paste",
+			" o/O   New Line",
 			"",
 			"Other Controls:",
-			" [u]    Undo",
-			" [^r]   Redo",
-			" [hjkl] Move/Draw",
-			" [HJKL] Move/Draw Fast",
-			" [1-" .. num_styles .. "]  Style",
-			" [Esc]  Exit",
+			" <u>    Undo",
+			" <C-r>  Redo",
+			" hjkl   Move/Draw",
+			" HJKL   Move/Draw Fast",
+			" 1-" .. num_styles .. "    Style",
+			" <Esc>  Exit",
 		}
 		for _, line in ipairs(help_items) do
 			table.insert(lines, line)
 		end
 	else
-		table.insert(lines, " [?]   Help")
+		table.insert(lines, " <?>   Help")
 	end
 
 	table.insert(lines, "")
@@ -127,7 +127,10 @@ function M.open_sidebar()
 	vim.api.nvim_win_set_buf(state.sidebar_win, state.sidebar_buf)
 
 	vim.api.nvim_win_call(state.sidebar_win, function()
-		vim.fn.matchadd("Special", "\\[.\\{-}\\]")
+		vim.fn.matchadd("Special", "\\<.\\{-}\\>")
+		vim.fn.matchadd("Special", [[\<[a-zA-Z0-9][\/-][a-zA-Z0-9]\>]])
+		vim.fn.matchadd("Special", [[hjkl]])
+		vim.fn.matchadd("Special", [[HJKL]])
 		vim.fn.matchadd("Title", "- DIAGRAM MODE -")
 		vim.fn.matchadd("Title", "---- STATUS ----")
 		vim.fn.matchadd("Function", "^.*:")

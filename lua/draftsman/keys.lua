@@ -43,19 +43,19 @@ function M.set_mappings(stop_callback)
 	map_hybrid("?", ui.toggle_help)
 	map_hybrid("e", function()
 		state.mode, state.last_dir = "edge", nil
-		ui.update_status("Edge Mode.\n[Space] to commit.")
+		ui.update_status("Edge Mode.\n<Space> to commit.")
 	end)
 	map_hybrid("a", function()
 		state.mode, state.last_dir = "arrow", nil
-		ui.update_status("Arrow Mode.\n[Space] to commit.")
+		ui.update_status("Arrow Mode.\n<Space> to commit.")
 	end)
 	map_hybrid("m", function()
 		state.mode = "move"
-		ui.update_status("Move Mode.\n[Space] to commit.")
+		ui.update_status("Move Mode.\n<Space> to commit.")
 	end)
 	map_hybrid("i", function()
 		state.mode = "text"
-		ui.update_status("Text Input.\n[Space] to commit.")
+		ui.update_status("Text Input.\n<Space> to commit.")
 	end)
 	map_hybrid("x", function()
 		canvas.set_char_at_cursor(" ")
@@ -69,7 +69,7 @@ function M.set_mappings(stop_callback)
 			state.mode = "box"
 			state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 			ui.update_start_marker()
-			ui.update_status("Box Draw. \n[Space] to commit.")
+			ui.update_status("Box Draw. \n<Space> to commit.")
 		end
 	end)
 
@@ -77,7 +77,7 @@ function M.set_mappings(stop_callback)
 		state.mode = "select"
 		state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 		ui.update_start_marker()
-		ui.update_status("Select. \n[d] to delete. \n[y] to yank. \n[Space] to cancel.")
+		ui.update_status("Select. \n<d> to delete. \n<y> to yank. \n<Space> to cancel.")
 	end)
 
 	-- Clipboard
@@ -85,14 +85,14 @@ function M.set_mappings(stop_callback)
 		if state.mode == "select" then
 			actions.cut_selection()
 		else
-			ui.update_status("Nothing to delete.\nUse [v] first")
+			ui.update_status("Nothing to delete.\nUse <v> first")
 		end
 	end)
 	map_hybrid("y", function()
 		if state.mode == "select" then
 			actions.copy_selection()
 		else
-			ui.update_status("Nothing to yank.\nUse [v] first")
+			ui.update_status("Nothing to yank.\nUse <v> first")
 		end
 	end)
 	map_hybrid("p", actions.paste_clipboard)

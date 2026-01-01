@@ -301,7 +301,7 @@ function M.copy_selection()
 	state.box_start = nil
 	state.mode = nil
 	ui.update_start_marker()
-	ui.update_status("Yanked.\nUse [p] to paste.")
+	ui.update_status("Yanked.\nUse <p> to paste.")
 end
 
 function M.cut_selection()
@@ -315,12 +315,12 @@ function M.cut_selection()
 			canvas.set_char_at(r, c, " ")
 		end
 	end
-	ui.update_status("Deleted.\nUse [p] to paste.")
+	ui.update_status("Deleted.\nUse <p> to paste.")
 end
 
 function M.paste_clipboard()
 	if not state.clipboard then
-		return ui.update_status("Clipboard empty.\nUse [v] to select\nand [y] to yank first.")
+		return ui.update_status("Clipboard empty.\nUse <v> to select\nand <y> to yank first.")
 	end
 	local r, c = canvas.get_cursor_virt_pos()
 	for i, line_content in ipairs(state.clipboard.lines) do

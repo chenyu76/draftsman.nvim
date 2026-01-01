@@ -21,6 +21,7 @@ M.defaults = {
 			[[<-> ]],
 		},
 	},
+	commit_key = "<CR>",
 	integrations = {
 		-- disable some builtin mini.nvim plugins to
 		-- prevent conflicts
