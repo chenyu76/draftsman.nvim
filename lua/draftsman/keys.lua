@@ -70,6 +70,7 @@ function M.set_mappings(stop_callback)
 	end)
 	map_hybrid("i", function()
 		state.mode = "text"
+		state.text_start_col = canvas.get_virt_col()
 		ui.update_status("Text Input.\n<Esc> to commit.")
 	end)
 	map_hybrid("x", function()
@@ -156,6 +157,13 @@ function M.set_mappings(stop_callback)
 			canvas.set_char_at_cursor(" ")
 			vim.cmd("normal! l")
 		end
+	end)
+
+	-- line break
+	safe_map("<CR>", function()
+		local r = canvas.get_virt_row()
+		local c = state.text_start_col
+		canvas.goto_virt_pos(r + 1, c)
 	end)
 
 	-- Stop text, visual and box mode if any

@@ -5,6 +5,7 @@ M.reset = function()
 	M.mode = nil -- nil, 'edge', 'arrow', 'box', 'select', 'text'
 	M.style_idx = 1
 	M.box_start = nil -- {row, virt_col}
+	M.text_start_col = 0
 	M.last_dir = nil
 	M.original_ve = ""
 
