@@ -12,4 +12,6 @@ M.OPPOSITE_BIT = {
 	[M.BIT.R] = M.BIT.L,
 }
 
+M.TEXT_INPUT_GROUP_NAME = "DraftsmanTextInputGroup"
+
 return M

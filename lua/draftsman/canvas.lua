@@ -15,7 +15,15 @@ end
 function M.goto_virt_pos(row, virt_col)
 	local line_count = vim.api.nvim_buf_line_count(0)
 	if row > line_count then
-		return
+		-- create empty lines if needed
+		if row > line_count then
+			local needed_lines = row - line_count
+			local empty_lines = {}
+			for _ = 1, needed_lines do
+				table.insert(empty_lines, "")
+			end
+			vim.api.nvim_buf_set_lines(0, line_count, line_count, false, empty_lines)
+		end
 	end
 
 	local curr_r = vim.fn.line(".")

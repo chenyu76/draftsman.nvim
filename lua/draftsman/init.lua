@@ -3,6 +3,7 @@ local config = require("draftsman.config")
 local mechanics = require("draftsman.mechanics")
 local ui = require("draftsman.ui")
 local keys = require("draftsman.keys")
+local C = require("draftsman.constants")
 -- local ui_markers = require("draftsman.ui") -- reuse marker logic
 
 local M = {}
@@ -49,10 +50,19 @@ function M.stop()
 	vim.o.virtualedit = state.original_ve
 
 	-- Re-enable plugins
-	vim.b.minisurround_disable = nil
-	vim.b.miniai_disable = nil
-	vim.b.miniindentscope_disable = nil
-	vim.b.minipairs_disable = nil
+	local integrations = config.options.integrations or config.defaults.integrations
+	if integrations.minisurround then
+		vim.b.minisurround_disable = nil
+	end
+	if integrations.miniai then
+		vim.b.miniai_disable = nil
+	end
+	if integrations.miniindentscope then
+		vim.b.miniindentscope_disable = nil
+	end
+	if integrations.minipairs then
+		vim.b.minipairs_disable = nil
+	end
 
 	ui.close_sidebar()
 	if state.ns_id then
@@ -61,6 +71,20 @@ function M.stop()
 
 	for _, key in ipairs(state.mapped_keys) do
 		pcall(vim.api.nvim_buf_del_keymap, 0, "n", key)
+	end
+
+	-- Remove text input monitor
+	local group_id = vim.api.nvim_create_augroup(C.TEXT_INPUT_GROUP_NAME, { clear = true })
+	vim.api.nvim_del_augroup_by_id(group_id)
+
+	-- Restore old <CR> mapping if any
+	if state.old_cr_mapping then
+		vim.keymap.set(
+			state.old_cr_mapping.mode,
+			state.old_cr_mapping.lhs,
+			state.old_cr_mapping.rhs,
+			vim.tbl_extend("force", { buffer = 0 }, state.old_cr_mapping.opts or {})
+		)
 	end
 
 	state.reset()

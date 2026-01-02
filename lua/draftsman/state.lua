@@ -17,6 +17,7 @@ M.reset = function()
 	M.show_help = false
 
 	M.mapped_keys = {}
+	M.old_cr_mapping = nil
 	M.clipboard = nil
 
 	-- Cached lookups (populated by mechanics)
