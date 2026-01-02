@@ -16,9 +16,20 @@ local function smart_merge(row, virt_col, new_mask_bits, mask_to_remove)
 	end
 end
 
+--- Moves a connected edge segment in a specific direction.
+--- @param direction string: 'h', 'j', 'k', or 'l'
+--- @param r number: row
+--- @param c number: col
 function M.move_edge_at(direction, r, c)
-	local char = canvas.get_char_at(r, c)
-	local mask = state.char_to_mask[char] or 0
+	-- Cache external functions and tables for performance
+	local get_char = canvas.get_char_at
+	local set_char = canvas.set_char_at
+	local char_map = state.char_to_mask
+	local bor, band, bnot = bit.bor, bit.band, bit.bnot
+
+	-- 0. Validation
+	local char = get_char(r, c)
+	local mask = char_map[char] or 0
 
 	if mask == 0 then
 		if ui and ui.update_status then
@@ -27,133 +38,137 @@ function M.move_edge_at(direction, r, c)
 		return
 	end
 
-	-- 准备基础参数
+	-- 1. Prepare Basic Parameters
 	local move_dr, move_dc = mech.direction_to_coord(direction)
 	local move_bit = C.DIR_KEY_TO_BIT[direction]
 	local rev_bit = C.OPPOSITE_BIT[move_bit]
 
-	-- 1. 确定扫描轴 (Scan Axis)
-	-- 如果左右移动(h/l)，移动的是竖线(j/k轴)
-	-- 如果上下移动(j/k)，移动的是横线(h/l轴)
-	local axis_dirs = {}
+	-- Determine Scan Axis (Perpendicular to movement)
+	-- If moving Horizontal (h/l), scan Vertical (j/k), and vice versa.
+	local scan_dirs = (direction == "h" or direction == "l") and { "j", "k" } or { "h", "l" }
 	local axis_bits = 0
-	if direction == "h" or direction == "l" then
-		axis_dirs = { "j", "k" }
-		axis_bits = bit.bor(C.DIR_KEY_TO_BIT["j"], C.DIR_KEY_TO_BIT["k"])
-	else
-		axis_dirs = { "h", "l" }
-		axis_bits = bit.bor(C.DIR_KEY_TO_BIT["h"], C.DIR_KEY_TO_BIT["l"])
+	for _, d in ipairs(scan_dirs) do
+		axis_bits = bor(axis_bits, C.DIR_KEY_TO_BIT[d])
 	end
 
-	-- 2. 扫描整条线段
-	-- edges_pos 仅包含与移动方向垂直的那一条连续线段
+	-- 2. Scan the Entire Segment
+	-- We collect all connected nodes that share the same perpendicular axis.
 	local edges_pos = {}
 
-	local function scan(start_r, start_c, scan_dir)
-		local dr, dc = mech.direction_to_coord(scan_dir)
+	-- Helper to add node
+	local function add_node(nr, nc, nmask)
+		local key = nr .. "," .. nc
+		if not edges_pos[key] then
+			edges_pos[key] = { r = nr, c = nc, mask = nmask }
+		end
+	end
+
+	-- Add current cursor position first
+	add_node(r, c, mask)
+
+	-- Scan in both perpendicular directions
+	for _, scan_dir in ipairs(scan_dirs) do
+		local s_dr, s_dc = mech.direction_to_coord(scan_dir)
 		local scan_bit = C.DIR_KEY_TO_BIT[scan_dir]
-		local curr_r, curr_c = start_r, start_c
+		local opp_scan_bit = C.OPPOSITE_BIT[scan_bit]
+
+		local curr_r, curr_c = r, c
 
 		while true do
-			local curr_char = canvas.get_char_at(curr_r, curr_c)
-			local curr_mask = state.char_to_mask[curr_char] or 0
-
-			if bit.band(curr_mask, scan_bit) == 0 then
+			-- Check current node's connectivity in scan direction
+			local curr_char = get_char(curr_r, curr_c)
+			local curr_mask = char_map[curr_char] or 0
+			if band(curr_mask, scan_bit) == 0 then
 				break
 			end
 
-			local next_r, next_c = curr_r + dr, curr_c + dc
-			local next_char = canvas.get_char_at(next_r, next_c)
-			local next_mask = state.char_to_mask[next_char] or 0
-			local opp_scan_bit = C.OPPOSITE_BIT[scan_bit]
-
-			if bit.band(next_mask, opp_scan_bit) == 0 then
+			-- Check next node's connectivity coming back
+			local next_r, next_c = curr_r + s_dr, curr_c + s_dc
+			local next_char = get_char(next_r, next_c)
+			local next_mask = char_map[next_char] or 0
+			if band(next_mask, opp_scan_bit) == 0 then
 				break
 			end
 
-			local key = next_r .. "," .. next_c
-			if not edges_pos[key] then
-				edges_pos[key] = { r = next_r, c = next_c, mask = next_mask }
-			end
-
+			add_node(next_r, next_c, next_mask)
 			curr_r, curr_c = next_r, next_c
 		end
 	end
 
-	local cursor_key = r .. "," .. c
-	edges_pos[cursor_key] = { r = r, c = c, mask = mask }
-
-	for _, d in ipairs(axis_dirs) do
-		scan(r, c, d)
-	end
-
-	-- 3. 计算变更 (Draw Changes)
+	-- 3. Calculate Changes
+	-- We store changes in a map to handle overlapping updates correctly.
 	local changes = {}
 
 	for key, node in pairs(edges_pos) do
-		-- A. 分离掩码
-		local moving_part = bit.band(node.mask, axis_bits) -- 移动的边 (如 │)
-		local stationary_part = bit.band(node.mask, bit.bnot(axis_bits)) -- 连接的边 (如 ─)
+		-- A. Separate Mask Components
+		-- moving_part: The edge actually moving (e.g., │ moving sideways)
+		-- stationary_part: The connectors staying behind (e.g., ─ connected to │)
+		local moving_part = band(node.mask, axis_bits)
+		local stationary_part = band(node.mask, bnot(axis_bits))
 
-		-- [关键判断 1] 是否在收缩 (或沿线滑动)
-		-- 只要 stationary_part 包含移动方向，就说明是顺着线移动
-		local is_collapsing = bit.band(stationary_part, move_bit) ~= 0
+		-- Are we collapsing? (Moving INTO an existing connection)
+		local is_collapsing = band(stationary_part, move_bit) ~= 0
 
-		-- [关键判断 2] 是否有尾巴
-		-- 检查 stationary_part 是否包含反方向的线 (例如 ├ 包含向上)
-		local has_tail = bit.band(stationary_part, rev_bit) ~= 0
+		-- Do we have a tail? (Connection opposite to movement)
+		local has_tail = band(stationary_part, rev_bit) ~= 0
 
-		-- === 处理旧位置 (Old Position) ===
+		-- === Handle Old Position ===
 		local old_mask_final = stationary_part
 
 		if is_collapsing then
-			-- [收缩/滑动模式]
+			-- [Collapse/Slide Mode]: Remove the connection we are moving towards
 			if not has_tail then
-				-- 如果没有尾巴 (如 ┐ 向左)，我们要切断通向新位置的线，实现"擦除"效果
-				old_mask_final = bit.band(old_mask_final, bit.bnot(move_bit))
-			else
-				-- 如果有尾巴 (如 ├ 向下)，我们在沿线滑动，旧位置的线必须保持连通，什么都不用减
-				-- old_mask_final 保持 stationary_part 原样 (即 │)
+				old_mask_final = band(old_mask_final, bnot(move_bit))
 			end
+			-- If has_tail is true, we keep the line continuous (sliding along it)
 		elseif stationary_part > 0 then
-			-- [扩张模式] (如 │ 向右变成 ├)
-			-- 拉出一条线指向新位置
-			old_mask_final = bit.bor(old_mask_final, move_bit)
+			-- [Expand Mode]: Leave a trail behind
+			old_mask_final = bor(old_mask_final, move_bit)
 		end
 
 		local old_char = mech.resolve_char(0, old_mask_final, 0)
 		changes[key] = { r = node.r, c = node.c, char = old_char }
 
-		-- === 处理新位置 (New Position) ===
+		-- === Handle New Position ===
 		local new_r = node.r + move_dr
 		local new_c = node.c + move_dc
 		local new_key = new_r .. "," .. new_c
 
-		-- 获取目标背景
+		-- Resolve target background
+		-- If the target is already in our `changes` table (updated by this loop), use that.
 		local target_mask = 0
 		if changes[new_key] then
-			target_mask = state.char_to_mask[changes[new_key].char] or 0
+			target_mask = char_map[changes[new_key].char] or 0
 		else
-			local target_char = canvas.get_char_at(new_r, new_c)
-			target_mask = state.char_to_mask[target_char] or 0
+			local target_char = get_char(new_r, new_c)
+			target_mask = char_map[target_char] or 0
 		end
 
-		-- [清理背景] 如果是收缩，目标位置原本通向"旧位置"的线段必须被切断
-		-- 否则 ┐ 移到 ─ 上会变成 ┬
+		-- [Clean Background]: If collapsing, ensure we don't have conflicting bits
 		if is_collapsing then
-			target_mask = bit.band(target_mask, bit.bnot(rev_bit))
+			target_mask = band(target_mask, bnot(rev_bit))
 		end
 
-		-- 计算新节点的形状
+		-- Calculate shape at new position
 		local new_mask_add = moving_part
+
 		if stationary_part > 0 then
 			if is_collapsing then
-				-- [收缩/滑动]：新节点应该完全继承旧节点的固定形状
-				-- 比如 ├ (Up|Down) 向下移，新节点也应该有 Up|Down
-				new_mask_add = bit.bor(new_mask_add, stationary_part)
+				-- [Collapse/Slide]: Inherit stationary parts
+				local parts_to_add = stationary_part
+
+				-- Prevent extra connections when sliding.
+				-- If moving a perpendicular edge (moving_part > 0) AND there is a connection
+				-- in the move direction, that connection is now "traversed" and should be removed.
+				-- (Exception: If simply extending a parallel line, keep it).
+				if moving_part > 0 then
+					parts_to_add = band(parts_to_add, bnot(move_bit))
+				end
+
+				new_mask_add = bor(new_mask_add, parts_to_add)
 			else
-				-- [扩张]：新节点只需要连回旧位置
-				new_mask_add = bit.bor(new_mask_add, rev_bit)
+				-- [Expand]: Connect back to the old position
+				new_mask_add = bor(new_mask_add, rev_bit)
 			end
 		end
 
@@ -161,9 +176,9 @@ function M.move_edge_at(direction, r, c)
 		changes[new_key] = { r = new_r, c = new_c, char = new_char }
 	end
 
-	-- 4. 应用变更
+	-- 4. Apply Changes
 	for _, change in pairs(changes) do
-		canvas.set_char_at(change.r, change.c, change.char)
+		set_char(change.r, change.c, change.char)
 	end
 end
 
@@ -187,7 +202,6 @@ function M.move_cursor(direction)
 	end
 
 	if state.mode == "move" then
-		-- 如果新位置和旧位置一样（比如撞墙了），就不执行移动操作
 		if r ~= old_r or c ~= old_c then
 			M.move_edge_at(direction, old_r, old_c)
 		end
