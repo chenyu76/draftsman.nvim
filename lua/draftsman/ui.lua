@@ -73,7 +73,6 @@ function M.update_content()
 			" <e>   Edge (Line)",
 			" <b>   Box (Rect)",
 			" <i>   Text Insert",
-			" < >   Commit",
 			"",
 			"Editing Tools:",
 			" <m>   Move Edge",
@@ -127,8 +126,8 @@ function M.open_sidebar()
 	vim.api.nvim_win_set_buf(state.sidebar_win, state.sidebar_buf)
 
 	vim.api.nvim_win_call(state.sidebar_win, function()
-		vim.fn.matchadd("Special", "\\<.\\{-}\\>")
-		vim.fn.matchadd("Special", [[\<[a-zA-Z0-9][\/-][a-zA-Z0-9]\>]])
+		vim.fn.matchadd("Special", "^ <.\\{-}>")
+		vim.fn.matchadd("Special", "^ [a-zA-Z0-9][/-][a-zA-Z0-9]")
 		vim.fn.matchadd("Special", [[hjkl]])
 		vim.fn.matchadd("Special", [[HJKL]])
 		vim.fn.matchadd("Title", "- DIAGRAM MODE -")
