@@ -77,15 +77,26 @@ function M.stop()
 	local group_id = vim.api.nvim_create_augroup(C.TEXT_INPUT_GROUP_NAME, { clear = true })
 	vim.api.nvim_del_augroup_by_id(group_id)
 
-	-- Restore old <CR> mapping if any
+	-- Restore old <CR> mapping if any, or delete the new one
 	if state.old_cr_mapping then
-		vim.keymap.set(
-			state.old_cr_mapping.mode,
-			state.old_cr_mapping.lhs,
-			state.old_cr_mapping.rhs,
-			vim.tbl_extend("force", { buffer = 0 }, state.old_cr_mapping.opts or {})
-		)
+		local m = state.old_cr_mapping
+
+		local rhs = m.callback or m.rhs
+
+		local opts = {
+			buffer = true,
+			silent = (m.silent == 1),
+			expr = (m.expr == 1),
+			nowait = (m.nowait == 1),
+			remap = (m.noremap == 0),
+			desc = m.desc,
+		}
+
+		vim.keymap.set("i", "<CR>", rhs, opts)
+	else
+		pcall(vim.keymap.del, "i", "<CR>", { buffer = true })
 	end
+	state.old_cr_mapping = nil
 
 	state.reset()
 end

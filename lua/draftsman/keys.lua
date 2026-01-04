@@ -142,10 +142,14 @@ function M.set_mappings(stop_callback)
 
 	-- line break
 	-- Record existing <CR> mapping in insert mode, if any
+	-- maparg returns {} if not found, ensure we verify it's a valid dict
 	local existing = vim.fn.maparg("<CR>", "i", false, true)
 	if existing and existing.buffer == 1 then
 		state.old_cr_mapping = existing
+	else
+		state.old_cr_mapping = nil
 	end
+
 	local cr_func = function()
 		if state.mode == "text" then
 			canvas.goto_virt_pos(canvas.get_virt_row() + 1, state.text_start_col)
@@ -154,6 +158,7 @@ function M.set_mappings(stop_callback)
 			vim.api.nvim_feedkeys(key, "n", false)
 		end
 	end
+
 	vim.keymap.set("i", "<CR>", cr_func, { buffer = true })
 
 	-- Stop text, visual and box mode if any
