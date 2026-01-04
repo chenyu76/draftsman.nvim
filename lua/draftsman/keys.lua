@@ -26,6 +26,17 @@ function M.set_mappings(stop_callback)
 			end
 		end)
 	end
+	local direction_mappings = {
+		["<Left>"] = "h",
+		["<Down>"] = "j",
+		["<Up>"] = "k",
+		["<Right>"] = "l",
+	}
+	for key, direction in pairs(direction_mappings) do
+		map_and_record(key, function()
+			actions.move_cursor(direction)
+		end)
+	end
 
 	-- Tools
 	map_and_record("?", ui.toggle_help)
