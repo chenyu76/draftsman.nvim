@@ -4,7 +4,6 @@ local mechanics = require("draftsman.mechanics")
 local ui = require("draftsman.ui")
 local keys = require("draftsman.keys")
 local C = require("draftsman.constants")
--- local ui_markers = require("draftsman.ui") -- reuse marker logic
 
 local M = {}
 

@@ -158,16 +158,29 @@ function M.update_start_marker()
 		vim.api.nvim_buf_clear_namespace(0, state.ns_id, 0, -1)
 	end
 	if (state.mode == "select" or state.mode == "box") and state.box_start then
-		local r, c = state.box_start[1], state.box_start[2]
-		local start_b, _, _ = canvas.get_byte_range(r, c)
+		local r, target_c = state.box_start[1], state.box_start[2]
+
+		local start_b, _, line_content = canvas.get_byte_range(r, target_c)
+
 		if start_b then
-			local opts = { id = 1, priority = 200, virt_text_pos = "overlay", virt_text = { { "⊕", "MatchParen" } } }
-			-- fill space if needed
-			-- or nvim_buf_set_extmark will throw error
-			-- NOTE: get_char_at return " " if out of bounds
-			if canvas.get_char_at(r, start_b) == " " then
-				canvas.set_char_at(r, start_b, " ")
+			local marker_char = "⊕"
+			local padding = ""
+
+			local current_width = vim.fn.strdisplaywidth(line_content)
+
+			if target_c > current_width then
+				local pad_len = target_c - current_width
+				padding = string.rep(" ", pad_len)
 			end
+
+			local opts = {
+				id = 1,
+				priority = 200,
+				virt_text_pos = "overlay",
+				virt_text = { { padding .. marker_char, "MatchParen" } },
+				strict = false,
+			}
+
 			vim.api.nvim_buf_set_extmark(0, state.ns_id, r - 1, start_b, opts)
 		end
 	end
