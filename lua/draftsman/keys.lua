@@ -13,6 +13,7 @@ local function map_and_record(key, callback)
 end
 
 function M.set_mappings(stop_callback)
+	local key = config.options.key or config.defaults.key
 	state.mapped_keys = {}
 
 	-- Movements
@@ -32,81 +33,81 @@ function M.set_mappings(stop_callback)
 		["<Up>"] = "k",
 		["<Right>"] = "l",
 	}
-	for key, direction in pairs(direction_mappings) do
-		map_and_record(key, function()
+	for k, direction in pairs(direction_mappings) do
+		map_and_record(k, function()
 			actions.move_cursor(direction)
 		end)
 	end
 
 	-- Tools
 	map_and_record("?", ui.toggle_help)
-	map_and_record("e", function()
-		if state.mode == "edge" then
+	map_and_record(key.stroke, function()
+		if state.mode == "stroke" then
 			state.mode = nil
-			ui.update_status("Ended Edge Draw.")
+			ui.update_status("Ended Stroke.")
 		else
-			state.mode, state.last_dir = "edge", nil
-			ui.update_status("Edge Mode.\n<e> to commit.")
+			state.mode, state.last_dir = "stroke", nil
+			ui.update_status("Stroke Tool.\n<e> to commit.")
 		end
 	end)
-	map_and_record("a", function()
+	map_and_record(key.arrow, function()
 		if state.mode == "arrow" then
 			state.mode = nil
 			ui.update_status("Ended Arrow Draw.")
 		else
 			state.mode, state.last_dir = "arrow", nil
-			ui.update_status("Arrow Mode.\n<a> to commit.")
+			ui.update_status("Arrow Tool.\n<a> to commit.")
 		end
 	end)
-	map_and_record("m", function()
+	map_and_record(key.move, function()
 		if state.mode == "move" then
 			state.mode = nil
-			ui.update_status("Ended Move Mode.")
+			ui.update_status("Ended Move Tool.")
 		else
 			state.mode = "move"
-			ui.update_status("Move Mode.\n<m> to commit.")
+			ui.update_status("Move Tool.\n<m> to commit.")
 		end
 	end)
 	map_and_record("i", function()
 		state.mode = "text"
 		state.text_start_col = canvas.get_virt_col()
-		ui.update_status("Text Input.\n<Esc> to finish.")
+		ui.update_status("Text Insert.\n<Esc> to finish.")
 		vim.cmd("startgreplace")
 	end)
 	map_and_record("x", function()
 		canvas.set_char_at_cursor(" ")
 	end)
 
-	-- Box/Select
-	map_and_record("b", function()
-		if state.mode == "box" then
-			actions.draw_box_commit()
+	-- rectangle/visual
+	map_and_record(key.rectangle, function()
+		if state.mode == "rect" then
+			actions.draw_rectangle_commit()
 		else
-			state.mode = "box"
-			state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
+			state.mode = "rect"
+			state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 			ui.update_start_marker()
-			ui.update_status("Box Draw. \n<b> to commit.")
+			ui.update_status("Draw Rectangle. \n<" .. key.rectangle .. "> to commit.")
 		end
 	end)
 
 	map_and_record("v", function()
-		state.mode = "select"
-		state.box_start = { canvas.get_virt_row(), canvas.get_virt_col() }
+		state.mode = "visual"
+		state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 		ui.update_start_marker()
-		ui.update_status("Select. \n<d> to delete. \n<y> to yank. \n<Esc> to cancel.")
+		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<Esc> to cancel.")
 	end)
 
 	-- Clipboard
 	map_and_record("d", function()
-		if state.mode == "select" then
-			actions.cut_selection()
+		if state.mode == "visual" then
+			actions.cut_visualization()
 		else
 			ui.update_status("Nothing to delete.\nUse <v> first.")
 		end
 	end)
 	map_and_record("y", function()
-		if state.mode == "select" then
-			actions.copy_selection()
+		if state.mode == "visual" then
+			actions.copy_visualization()
 		else
 			ui.update_status("Nothing to yank.\nUse <v> first.")
 		end
@@ -165,18 +166,18 @@ function M.set_mappings(stop_callback)
 		if state.mode == "text" then
 			canvas.goto_virt_pos(canvas.get_virt_row() + 1, state.text_start_col)
 		else
-			local key = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
-			vim.api.nvim_feedkeys(key, "n", false)
+			local k = vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+			vim.api.nvim_feedkeys(k, "n", false)
 		end
 	end
 
 	vim.keymap.set("i", "<CR>", cr_func, { buffer = true })
 
-	-- Stop text, visual and box mode if any
+	-- Stop text, visual and rectangle mode if any
 	-- Otherwise, exit.
 	map_and_record("<Esc>", function()
-		if state.mode == "select" or state.mode == "box" then
-			state.mode, state.box_start = nil, nil
+		if state.mode == "visual" or state.mode == "rectangle" then
+			state.mode, state.rectangle_start = nil, nil
 			ui.update_start_marker()
 			ui.update_status("Ready.")
 		else

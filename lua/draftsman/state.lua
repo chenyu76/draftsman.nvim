@@ -2,11 +2,11 @@ local M = {}
 
 M.reset = function()
 	M.active = false
-	M.mode = nil -- nil, 'edge', 'arrow', 'box', 'select', 'text'
+	M.mode = nil -- nil, 'stroke', 'arrow', 'rectangle', 'visual', 'text'
 	M.style_idx = 1
-	M.box_start = nil -- {row, virt_col}
+	M.rectangle_start = nil -- {row, virt_col}
 	M.text_start_col = 0
-	M.last_dir = nil
+	M.last_dir = nil -- last direction
 	M.original_ve = ""
 
 	-- UI Handles

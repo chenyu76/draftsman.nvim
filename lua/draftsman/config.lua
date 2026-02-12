@@ -34,6 +34,13 @@ M.defaults = {
 		"DraftsmanStop",
 		"DraftsmanToggle",
 	},
+	key = {
+		stroke = "s",
+		arrow = "a",
+		rectangle = "r",
+		move = "m",
+		insert_text = "i",
+	},
 }
 
 M.options = {}

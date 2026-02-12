@@ -9,9 +9,9 @@ function M.update_status(msg)
 		return
 	end
 
-	local info = "Mode: " .. (state.mode or "Ready")
-	if state.box_start then
-		info = info .. string.format(" (%d,%d)", state.box_start[1], state.box_start[2])
+	local info = "Tool: " .. (state.mode or "Ready")
+	if state.rectangle_start then
+		info = info .. string.format(" (%d,%d)", state.rectangle_start[1], state.rectangle_start[2])
 	end
 
 	local style_lines = (config.options.styles or config.defaults.styles)[state.style_idx]
@@ -65,24 +65,26 @@ function M.update_content()
 
 	local lines = { "- DIAGRAM MODE -" }
 	local num_styles = #(config.options.styles or config.defaults.styles)
+	local key = config.options.key or config.defaults.key
 
 	if state.show_help then
 		local help_items = {
 			"Base Tools:",
-			" <a>   Arrow",
-			" <e>   Edge (Line)",
-			" <b>   Box (Rect)",
-			" <i>   Text Insert",
+			" <" .. key.arrow .. ">   Arrow",
+			" <" .. key.stroke .. ">   Stroke",
+			" <" .. key.rectangle .. ">   Rectangle",
+			" <" .. key.insert_text .. ">   Insert Text",
 			"",
 			"Editing Tools:",
-			" <m>   Move Edge",
+			" <" .. key.move .. ">   Move stroke",
 			" <x>   Clear Char",
-			" <BS>  Backspace",
-			" <v>   Select Start",
+			-- needless to show
+			-- " <BS>  Backspace",
+			-- " o/O  Newline",
+			" <v>   Visual",
 			" <d>   Delete",
 			" <y>   Yank",
 			" <p>   Paste",
-			" o/O   New Line",
 			"",
 			"Other Controls:",
 			" <u>    Undo",
@@ -156,8 +158,8 @@ function M.update_start_marker()
 	if state.ns_id then
 		vim.api.nvim_buf_clear_namespace(0, state.ns_id, 0, -1)
 	end
-	if (state.mode == "select" or state.mode == "box") and state.box_start then
-		local r, target_c = state.box_start[1], state.box_start[2]
+	if (state.mode == "visual" or state.mode == "rectangle") and state.rectangle_start then
+		local r, target_c = state.rectangle_start[1], state.rectangle_start[2]
 
 		local start_b, _, line_content = canvas.get_byte_range(r, target_c)
 

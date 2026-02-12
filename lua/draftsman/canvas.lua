@@ -39,7 +39,7 @@ end
 function M.get_byte_range(row, target_virt_col)
 	local lines = vim.api.nvim_buf_get_lines(0, row - 1, row, false)
 	local line = lines[1] or ""
-	local tabstop = vim.bo.tabstop -- 获取当前缓冲区的 tabstop 设置
+	local tabstop = vim.bo.tabstop
 
 	local current_virt = 0
 	local char_idx = 0

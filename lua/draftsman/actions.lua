@@ -16,11 +16,11 @@ local function smart_merge(row, virt_col, new_mask_bits, mask_to_remove)
 	end
 end
 
---- Moves a connected edge segment in a specific direction.
+--- Moves a connected stroke segment in a specific direction.
 --- @param direction string: 'h', 'j', 'k', or 'l'
 --- @param r number: row
 --- @param c number: col
-function M.move_edge_at(direction, r, c)
+function M.move_stroke_at(direction, r, c)
 	-- Cache external functions and tables for performance
 	local get_char = canvas.get_char_at
 	local set_char = canvas.set_char_at
@@ -33,7 +33,7 @@ function M.move_edge_at(direction, r, c)
 
 	if mask == 0 then
 		if ui and ui.update_status then
-			ui.update_status("No edge to move.\nPlace cursor on an edge character.")
+			ui.update_status("No stroke to move.\nPlace cursor on an stroke character.")
 		end
 		return
 	end
@@ -53,13 +53,13 @@ function M.move_edge_at(direction, r, c)
 
 	-- 2. Scan the Entire Segment
 	-- We collect all connected nodes that share the same perpendicular axis.
-	local edges_pos = {}
+	local strokes_pos = {}
 
 	-- Helper to add node
 	local function add_node(nr, nc, nmask)
 		local key = nr .. "," .. nc
-		if not edges_pos[key] then
-			edges_pos[key] = { r = nr, c = nc, mask = nmask }
+		if not strokes_pos[key] then
+			strokes_pos[key] = { r = nr, c = nc, mask = nmask }
 		end
 	end
 
@@ -99,9 +99,9 @@ function M.move_edge_at(direction, r, c)
 	-- We store changes in a map to handle overlapping updates correctly.
 	local changes = {}
 
-	for key, node in pairs(edges_pos) do
+	for key, node in pairs(strokes_pos) do
 		-- A. Separate Mask Components
-		-- moving_part: The edge actually moving (e.g., │ moving sideways)
+		-- moving_part: The stroke actually moving (e.g., │ moving sideways)
 		-- stationary_part: The connectors staying behind (e.g., ─ connected to │)
 		local moving_part = band(node.mask, axis_bits)
 		local stationary_part = band(node.mask, bnot(axis_bits))
@@ -158,7 +158,7 @@ function M.move_edge_at(direction, r, c)
 				local parts_to_add = stationary_part
 
 				-- Prevent extra connections when sliding.
-				-- If moving a perpendicular edge (moving_part > 0) AND there is a connection
+				-- If moving a perpendicular stroke (moving_part > 0) AND there is a connection
 				-- in the move direction, that connection is now "traversed" and should be removed.
 				-- (Exception: If simply extending a parallel line, keep it).
 				if moving_part > 0 then
@@ -203,7 +203,7 @@ function M.move_cursor(direction)
 
 	if state.mode == "move" then
 		if r ~= old_r or c ~= old_c then
-			M.move_edge_at(direction, old_r, old_c)
+			M.move_stroke_at(direction, old_r, old_c)
 		end
 	end
 
@@ -219,7 +219,7 @@ function M.move_cursor(direction)
 	c = canvas.get_virt_col()
 
 	-- Drawing Logic
-	if (state.mode == "edge" or state.mode == "arrow") and (r ~= old_r or c ~= old_c) then
+	if (state.mode == "stroke" or state.mode == "arrow") and (r ~= old_r or c ~= old_c) then
 		local d_mask = C.DIR_KEY_TO_BIT[direction]
 		local rev_mask = C.OPPOSITE_BIT[d_mask]
 
@@ -246,21 +246,21 @@ function M.move_cursor(direction)
 	end
 	state.last_dir = direction
 
-	-- Status update for selection/box
-	if (state.mode == "box" or state.mode == "select") and state.box_start then
-		local r1, c1 = state.box_start[1], state.box_start[2]
+	-- Status update for visualization/rectangle
+	if (state.mode == "rectangle" or state.mode == "visual") and state.rectangle_start then
+		local r1, c1 = state.rectangle_start[1], state.rectangle_start[2]
 		local w = math.abs(c - c1) + 1
 		local h = math.abs(r - r1) + 1
-		local prefix = (state.mode == "box") and "Box" or "Select"
+		local prefix = (state.mode == "rectangle") and "rectangle" or "visual"
 		ui.update_status(string.format("%s: %dx%d", prefix, w, h))
 	end
 end
 
-function M.draw_box_commit()
-	if not state.box_start then
+function M.draw_rectangle_commit()
+	if not state.rectangle_start then
 		return
 	end
-	local r1, c1 = state.box_start[1], state.box_start[2]
+	local r1, c1 = state.rectangle_start[1], state.rectangle_start[2]
 	local r2 = canvas.get_virt_row()
 	local c2 = canvas.get_virt_col()
 	local start_r, end_r = math.min(r1, r2), math.max(r1, r2)
@@ -281,25 +281,25 @@ function M.draw_box_commit()
 		smart_merge(r, end_c, BIT.U + BIT.D)
 	end
 
-	state.box_start = nil
+	state.rectangle_start = nil
 	state.mode = nil
 	ui.update_start_marker()
-	ui.update_status("Box Drawn")
+	ui.update_status("rectangle Drawn")
 end
 
-local function get_selection_rect()
-	if not state.box_start then
+local function get_visualization_rect()
+	if not state.rectangle_start then
 		return nil
 	end
-	local r1, c1 = state.box_start[1], state.box_start[2]
+	local r1, c1 = state.rectangle_start[1], state.rectangle_start[2]
 	local r2, c2 = canvas.get_cursor_virt_pos()
 	return { top = math.min(r1, r2), bottom = math.max(r1, r2), left = math.min(c1, c2), right = math.max(c1, c2) }
 end
 
-function M.copy_selection()
-	local rect = get_selection_rect()
+function M.copy_visualization()
+	local rect = get_visualization_rect()
 	if not rect then
-		return ui.update_status("No selection")
+		return ui.update_status("No visualization")
 	end
 
 	local lines = {}
@@ -312,18 +312,18 @@ function M.copy_selection()
 	end
 
 	state.clipboard = { lines = lines, width = rect.right - rect.left + 1, height = rect.bottom - rect.top + 1 }
-	state.box_start = nil
+	state.rectangle_start = nil
 	state.mode = nil
 	ui.update_start_marker()
 	ui.update_status("Yanked.\nUse <p> to paste.")
 end
 
-function M.cut_selection()
-	local rect = get_selection_rect()
+function M.cut_visualization()
+	local rect = get_visualization_rect()
 	if not rect then
-		return ui.update_status("No selection")
+		return ui.update_status("No visualization")
 	end
-	M.copy_selection() -- This clears box_start, so use local rect
+	M.copy_visualization() -- This clears rectangle_start, so use local rect
 	for r = rect.top, rect.bottom do
 		for c = rect.left, rect.right do
 			canvas.set_char_at(r, c, " ")
@@ -334,7 +334,7 @@ end
 
 function M.paste_clipboard()
 	if not state.clipboard then
-		return ui.update_status("Clipboard empty.\nUse <v> to select\nand <y> to yank first.")
+		return ui.update_status("Clipboard empty.\nUse <v> to visual\nand <y> to yank first.")
 	end
 	local r, c = canvas.get_cursor_virt_pos()
 	for i, line_content in ipairs(state.clipboard.lines) do
