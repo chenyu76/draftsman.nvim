@@ -80,10 +80,10 @@ function M.set_mappings(stop_callback)
 
 	-- rectangle/visual
 	map_and_record(key.rectangle, function()
-		if state.mode == "rect" then
+		if state.mode == "rectangle" then
 			actions.draw_rectangle_commit()
 		else
-			state.mode = "rect"
+			state.mode = "rectangle"
 			state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 			ui.update_start_marker()
 			ui.update_status("Draw Rectangle. \n<" .. key.rectangle .. "> to commit.")
