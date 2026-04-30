@@ -173,11 +173,11 @@ function M.set_mappings(stop_callback)
 
 	vim.keymap.set("i", "<CR>", cr_func, { buffer = true })
 
-	-- Stop text, visual and rectangle mode if any
-	-- Otherwise, exit.
+	-- Stop any active mode if any. Otherwise, exit the plugin.
 	map_and_record("<Esc>", function()
-		if state.mode == "visual" or state.mode == "rectangle" then
-			state.mode, state.rectangle_start = nil, nil
+		if state.mode ~= nil then
+			state.mode = nil
+			state.rectangle_start = nil
 			ui.update_start_marker()
 			ui.update_status("Ready.")
 		else
