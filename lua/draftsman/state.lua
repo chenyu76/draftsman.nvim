@@ -2,7 +2,7 @@ local M = {}
 
 M.reset = function()
 	M.active = false
-	M.mode = nil -- nil, 'stroke', 'arrow', 'rectangle', 'visual', 'text'
+	M.mode = nil -- nil, 'stroke', 'arrow', 'rectangle', 'visual', 'text', 'move'
 	M.style_idx = 1
 	M.rectangle_start = nil -- {row, virt_col}
 	M.text_start_col = 0
