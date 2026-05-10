@@ -154,35 +154,84 @@ function M.close_sidebar()
 	state.sidebar_buf = nil
 end
 
-function M.update_start_marker()
+function M.update_visual_markers()
 	if state.ns_id then
 		vim.api.nvim_buf_clear_namespace(0, state.ns_id, 0, -1)
 	end
 	if (state.mode == "visual" or state.mode == "rectangle") and state.rectangle_start then
-		local r, target_c = state.rectangle_start[1], state.rectangle_start[2]
+		local r1, c1 = state.rectangle_start[1], state.rectangle_start[2]
+		local r2, c2 = canvas.get_virt_row(), canvas.get_virt_col()
 
-		local start_b, _, line_content = canvas.get_byte_range(r, target_c)
+		local min_r, max_r = math.min(r1, r2), math.max(r1, r2)
+		local min_c, max_c = math.min(c1, c2), math.max(c1, c2)
 
-		if start_b then
-			local marker_char = "⊕"
-			local padding = ""
+		local row_data = {} -- r -> { [byte_idx] = { {col, char}, ... } }
 
-			local current_width = vim.fn.strdisplaywidth(line_content)
+		local function add_marker(r, c, char)
+			local start_b, _, line_content = canvas.get_byte_range(r, c)
+			if not start_b then
+				return
+			end
+			if not row_data[r] then
+				row_data[r] = {}
+			end
+			if not row_data[r][start_b] then
+				row_data[r][start_b] = {}
+			end
+			table.insert(row_data[r][start_b], { col = c, char = char, line = line_content })
+		end
 
-			if target_c > current_width then
-				local pad_len = target_c - current_width
-				padding = string.rep(" ", pad_len)
+		if min_r == max_r and min_c == max_c then
+			add_marker(min_r, min_c, "⊕")
+		else
+			-- Corners
+			add_marker(min_r, min_c, "+")
+			add_marker(min_r, max_c, "+")
+			add_marker(max_r, min_c, "+")
+			add_marker(max_r, max_c, "+")
+
+			-- Horizontal edges
+			for c = min_c + 1, max_c - 1 do
+				add_marker(min_r, c, "-")
+				add_marker(max_r, c, "-")
 			end
 
-			local opts = {
-				id = 1,
-				priority = 200,
-				virt_text_pos = "overlay",
-				virt_text = { { padding .. marker_char, "MatchParen" } },
-				strict = false,
-			}
+			-- Vertical edges
+			for r = min_r + 1, max_r - 1 do
+				add_marker(r, min_c, "|")
+				add_marker(r, max_c, "|")
+			end
+		end
 
-			vim.api.nvim_buf_set_extmark(0, state.ns_id, r - 1, start_b, opts)
+		for r, bytes in pairs(row_data) do
+			for b, markers in pairs(bytes) do
+				table.sort(markers, function(a, b)
+					return a.col < b.col
+				end)
+
+				local line = markers[1].line
+				local start_virt = vim.fn.strdisplaywidth(string.sub(line, 1, b))
+
+				local current_str = ""
+				local current_col = start_virt
+
+				for _, m in ipairs(markers) do
+					if m.col > current_col then
+						current_str = current_str .. string.rep(" ", m.col - current_col)
+						current_col = m.col
+					end
+					if m.col == current_col then
+						current_str = current_str .. m.char
+						current_col = current_col + vim.fn.strwidth(m.char)
+					end
+				end
+
+				vim.api.nvim_buf_set_extmark(0, state.ns_id, r - 1, b, {
+					virt_text_pos = "overlay",
+					virt_text = { { current_str, "MatchParen" } },
+					priority = 200,
+				})
+			end
 		end
 	end
 end

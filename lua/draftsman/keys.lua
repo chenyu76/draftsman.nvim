@@ -85,7 +85,7 @@ function M.set_mappings(stop_callback)
 		else
 			state.mode = "rectangle"
 			state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
-			ui.update_start_marker()
+			ui.update_visual_markers()
 			ui.update_status("Draw Rectangle. \n<" .. key.rectangle .. "> to commit.")
 		end
 	end)
@@ -93,7 +93,7 @@ function M.set_mappings(stop_callback)
 	map_and_record("v", function()
 		state.mode = "visual"
 		state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
-		ui.update_start_marker()
+		ui.update_visual_markers()
 		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<Esc> to cancel.")
 	end)
 
@@ -189,7 +189,7 @@ function M.set_mappings(stop_callback)
 		if state.mode ~= nil then
 			state.mode = nil
 			state.rectangle_start = nil
-			ui.update_start_marker()
+			ui.update_visual_markers()
 			ui.update_status("Ready.")
 		else
 			stop_callback()

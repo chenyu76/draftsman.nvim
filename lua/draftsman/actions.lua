@@ -253,6 +253,7 @@ function M.move_cursor(direction)
 		local h = math.abs(r - r1) + 1
 		local prefix = (state.mode == "rectangle") and "rectangle" or "visual"
 		ui.update_status(string.format("%s: %dx%d", prefix, w, h))
+		ui.update_visual_markers()
 	end
 end
 
@@ -283,7 +284,7 @@ function M.draw_rectangle_commit()
 
 	state.rectangle_start = nil
 	state.mode = nil
-	ui.update_start_marker()
+	ui.update_visual_markers()
 	ui.update_status("rectangle Drawn")
 end
 
@@ -314,7 +315,7 @@ function M.copy_visualization()
 	state.clipboard = { lines = lines, width = rect.right - rect.left + 1, height = rect.bottom - rect.top + 1 }
 	state.rectangle_start = nil
 	state.mode = nil
-	ui.update_start_marker()
+	ui.update_visual_markers()
 	ui.update_status("Yanked.\nUse <p> or <P> to paste.")
 end
 
