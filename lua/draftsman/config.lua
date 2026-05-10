@@ -43,10 +43,15 @@ M.defaults = {
 	},
 }
 
-M.options = {}
+M.options = M.defaults
+M.did_setup = false
 
 function M.setup(opts)
+	if M.did_setup and not opts then
+		return
+	end
 	M.options = vim.tbl_deep_extend("force", M.defaults, opts or {})
+	M.did_setup = true
 
 	if M.options.cmd[1] then
 		vim.api.nvim_create_user_command(M.options.cmd[1], function()

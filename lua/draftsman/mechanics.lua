@@ -41,7 +41,7 @@ function M.init_styles()
 	state.char_to_mask = {}
 	state.parsed_styles = {}
 
-	local raw = config.options.styles or config.defaults.styles
+	local raw = config.options.styles
 
 	for i, grid in ipairs(raw) do
 		local parsed = parse_style_grid(grid)

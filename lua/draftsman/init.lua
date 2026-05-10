@@ -10,6 +10,7 @@ local M = {}
 M.setup = config.setup
 
 function M.start()
+	config.setup()
 	if state.active then
 		return
 	end
@@ -22,7 +23,7 @@ function M.start()
 	state.ns_id = vim.api.nvim_create_namespace("draftsman_markers")
 
 	-- Disable interfering plugins temporarily
-	local integrations = config.options.integrations or config.defaults.integrations
+	local integrations = config.options.integrations
 	if integrations.minisurround then
 		vim.b.minisurround_disable = true
 	end
@@ -42,6 +43,7 @@ function M.start()
 end
 
 function M.stop()
+	config.setup()
 	if not state.active then
 		return
 	end
@@ -49,7 +51,7 @@ function M.stop()
 	vim.o.virtualedit = state.original_ve
 
 	-- Re-enable plugins
-	local integrations = config.options.integrations or config.defaults.integrations
+	local integrations = config.options.integrations
 	if integrations.minisurround then
 		vim.b.minisurround_disable = nil
 	end
@@ -101,6 +103,7 @@ function M.stop()
 end
 
 function M.toggle()
+	config.setup()
 	if state.active then
 		M.stop()
 	else
