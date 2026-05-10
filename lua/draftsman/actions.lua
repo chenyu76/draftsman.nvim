@@ -315,7 +315,7 @@ function M.copy_visualization()
 	state.rectangle_start = nil
 	state.mode = nil
 	ui.update_start_marker()
-	ui.update_status("Yanked.\nUse <p> to paste.")
+	ui.update_status("Yanked.\nUse <p> or <P> to paste.")
 end
 
 function M.cut_visualization()
@@ -329,14 +329,21 @@ function M.cut_visualization()
 			canvas.set_char_at(r, c, " ")
 		end
 	end
-	ui.update_status("Deleted.\nUse <p> to paste.")
+	ui.update_status("Deleted.\nUse <p> or <P> to paste.")
 end
 
-function M.paste_clipboard()
+function M.paste_clipboard(reverse_row, reverse_col)
 	if not state.clipboard then
 		return ui.update_status("Clipboard empty.\nUse <v> to visual\nand <y> to yank first.")
 	end
+
+	local row_offset = reverse_row and -(state.clipboard.height - 1) or 0
+	local col_offset = reverse_col and -(state.clipboard.width - 1) or 0
+
 	local r, c = canvas.get_cursor_virt_pos()
+	r = r + row_offset
+	c = c + col_offset
+
 	for i, line_content in ipairs(state.clipboard.lines) do
 		local target_r = r + i - 1
 		local len_chars = vim.fn.strchars(line_content)

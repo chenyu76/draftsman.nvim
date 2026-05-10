@@ -84,7 +84,7 @@ function M.update_content()
 			" <v>   Visual",
 			" <d>   Delete",
 			" <y>   Yank",
-			" <p>   Paste",
+			" <p/P> Paste",
 			"",
 			"Other Controls:",
 			" <u>    Undo",
