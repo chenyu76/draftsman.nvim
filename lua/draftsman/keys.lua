@@ -121,7 +121,7 @@ function M.set_mappings(stop_callback)
 	map_and_record("<C-p>", function()
 		actions.paste_clipboard(true, false)
 	end)
-	map_and_record("<C-P>", function()
+	map_and_record("<C-S-P>", function()
 		actions.paste_clipboard(true, true)
 	end)
 
