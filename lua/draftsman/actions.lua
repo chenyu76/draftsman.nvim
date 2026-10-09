@@ -182,7 +182,7 @@ function M.move_stroke_at(direction, r, c)
 	end
 end
 
--- Visit straight segment ends in right, up, left, down order.
+-- Jump to the first connected segment end in right, up, left, down order.
 function M.jump_stroke_ends()
 	local r, c = canvas.get_cursor_virt_pos()
 	local line_count = vim.api.nvim_buf_line_count(0)
@@ -191,6 +191,7 @@ function M.jump_stroke_ends()
 	end
 
 	for _, direction in ipairs({ "l", "k", "h", "j" }) do
+		local moved = false
 		local direction_bit = C.DIR_KEY_TO_BIT[direction]
 		local opposite_bit = C.OPPOSITE_BIT[direction_bit]
 		while true do
@@ -208,12 +209,15 @@ function M.jump_stroke_ends()
 				break
 			end
 			r, c = next_r, next_c
+			moved = true
+		end
+		if moved then
+			canvas.goto_virt_pos(r, c)
+			state.last_dir = nil
+			ui.update_visual_markers()
+			return
 		end
 	end
-
-	canvas.goto_virt_pos(r, c)
-	state.last_dir = nil
-	ui.update_visual_markers()
 end
 
 function M.open_line(above)
