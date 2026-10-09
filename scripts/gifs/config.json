@@ -1,0 +1,302 @@
+{
+  "output_dir": "docs/gifs",
+  "font_path": "/usr/share/fonts/maple/MapleMono-NF-CN-Regular.ttf",
+  "font_size": 22,
+  "line_height": 30,
+  "cell_width": null,
+  "padding_x": 18,
+  "padding_y": 18,
+  "min_columns": 0,
+  "min_rows": 9,
+  "extra_columns": 4,
+  "extra_rows": 2,
+  "line_numbers": true,
+  "relative_numbers": true,
+  "cursorline": true,
+  "keybar_height": 44,
+  "key_history_length": 7,
+  "loop": 0,
+  "timing": {
+    "start_ms": 650,
+    "move_ms": 110,
+    "key_ms": 280,
+    "end_ms": 1300,
+    "typing_ms": 120
+  },
+  "colors": {
+    "background": "#24273a",
+    "foreground": "#cad3f5",
+    "cursorline": "#2a2d43",
+    "gutter": "#6e738d",
+    "cursor": "#f4dbd6",
+    "cursor_text": "#24273a",
+    "marker": "#8bd5ca",
+    "marker_background": "#363a4f",
+    "keybar": "#1e2030",
+    "key": "#c6a0f6",
+    "key_history": "#8087a2"
+  },
+  "scenarios": [
+    {
+      "name": "stroke",
+      "cursor": [
+        3,
+        4
+      ],
+      "steps": [
+        {
+          "keys": "s"
+        },
+        {
+          "keys": "lllllllllljjjjhhhhhhkkkk",
+          "hold_ms": 550
+        },
+        {
+          "keys": "s"
+        },
+        {
+          "keys": "lllllljj"
+        },
+        {
+          "keys": "s"
+        },
+        {
+          "keys": "llllll",
+          "hold_ms": 550
+        },
+        {
+          "keys": "s"
+        }
+      ]
+    },
+    {
+      "name": "arrow",
+      "cursor": [
+        3,
+        4
+      ],
+      "steps": [
+        {
+          "keys": "a"
+        },
+        {
+          "keys": "lllllllllllljjjjllllll",
+          "hold_ms": 550
+        },
+        {
+          "keys": "a"
+        }
+      ]
+    },
+    {
+      "name": "rectangle",
+      "cursor": [
+        3,
+        4
+      ],
+      "steps": [
+        {
+          "keys": "r"
+        },
+        {
+          "keys": "lllllllllllllljjjjj",
+          "hold_ms": 600
+        },
+        {
+          "keys": "r"
+        }
+      ]
+    },
+    {
+      "name": "text",
+      "lines": [
+        "",
+        "",
+        "    ┌──────────────────┐",
+        "    │                  │",
+        "    │                  │",
+        "    │                  │",
+        "    └──────────────────┘"
+      ],
+      "cursor": [
+        4,
+        7
+      ],
+      "steps": [
+        {
+          "keys": "i"
+        },
+        {
+          "keys": "Start here",
+          "hold_ms": 450
+        },
+        {
+          "keys": "<CR>"
+        },
+        {
+          "keys": "Draw a diagram",
+          "hold_ms": 450
+        },
+        {
+          "keys": "<Esc>"
+        }
+      ]
+    },
+    {
+      "name": "move",
+      "lines": [
+        "",
+        "",
+        "    ┌──────────┐",
+        "    │          │",
+        "    │          ├────────",
+        "    │          │",
+        "    └──────────┘"
+      ],
+      "cursor": [
+        5,
+        15
+      ],
+      "steps": [
+        {
+          "keys": "m"
+        },
+        {
+          "keys": "lllll",
+          "hold_ms": 650
+        },
+        {
+          "keys": "hh",
+          "hold_ms": 650
+        },
+        {
+          "keys": "k",
+          "hold_ms": 650
+        },
+        {
+          "keys": "m"
+        }
+      ]
+    },
+    {
+      "name": "eraser",
+      "lines": [
+        "",
+        "",
+        "    ┌──────────────┐",
+        "    │              │",
+        "    │     oops!    │",
+        "    │              │",
+        "    └──────────────┘"
+      ],
+      "cursor": [
+        5,
+        14
+      ],
+      "steps": [
+        {
+          "keys": "x",
+          "hold_ms": 550
+        },
+        {
+          "keys": "<BS><BS><BS><BS>",
+          "hold_ms": 550
+        }
+      ]
+    },
+    {
+      "name": "clipboard",
+      "lines": [
+        "",
+        "",
+        "    ┌──────┐",
+        "    │ Node │",
+        "    └──────┘"
+      ],
+      "cursor": [
+        3,
+        4
+      ],
+      "steps": [
+        {
+          "keys": "v"
+        },
+        {
+          "keys": "llllllljj"
+        },
+        {
+          "keys": "y",
+          "hold_ms": 450
+        },
+        {
+          "keys": "kkLLll"
+        },
+        {
+          "keys": "p",
+          "hold_ms": 550
+        },
+        {
+          "keys": "v"
+        },
+        {
+          "keys": "llllllljj"
+        },
+        {
+          "keys": "d",
+          "hold_ms": 550
+        },
+        {
+          "keys": "jjHhh"
+        },
+        {
+          "keys": "p"
+        }
+      ]
+    },
+    {
+      "name": "styles",
+      "cursor": [
+        3,
+        3
+      ],
+      "steps": [
+        {
+          "keys": "1r"
+        },
+        {
+          "keys": "Llljjj",
+          "hold_ms": 250
+        },
+        {
+          "keys": "r",
+          "hold_ms": 650
+        },
+        {
+          "keys": "kkklll"
+        },
+        {
+          "keys": "2r"
+        },
+        {
+          "keys": "Llljjj"
+        },
+        {
+          "keys": "r",
+          "hold_ms": 650
+        },
+        {
+          "keys": "kkklll"
+        },
+        {
+          "keys": "3r"
+        },
+        {
+          "keys": "Llljjj"
+        },
+        {
+          "keys": "r"
+        }
+      ]
+    }
+  ]
+}
