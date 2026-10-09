@@ -182,42 +182,51 @@ function M.move_stroke_at(direction, r, c)
 	end
 end
 
--- Jump to the first connected segment end in right, up, left, down order.
+-- Choose the last connected direction before a gap, scanning clockwise from right.
 function M.jump_stroke_ends()
 	local r, c = canvas.get_cursor_virt_pos()
 	local line_count = vim.api.nvim_buf_line_count(0)
-	if (state.char_to_mask[canvas.get_char_at(r, c)] or 0) == 0 then
-		return
-	end
-
-	for _, direction in ipairs({ "l", "k", "h", "j" }) do
-		local moved = false
+	local function connected_neighbor(row, col, direction)
 		local direction_bit = C.DIR_KEY_TO_BIT[direction]
-		local opposite_bit = C.OPPOSITE_BIT[direction_bit]
-		while true do
-			local mask = state.char_to_mask[canvas.get_char_at(r, c)] or 0
-			if bit.band(mask, direction_bit) == 0 then
-				break
-			end
-
-			local next_r, next_c = mech.direction_to_coord(direction, r, c)
-			if next_r < 1 or next_r > line_count or next_c < 0 then
-				break
-			end
-			local next_mask = state.char_to_mask[canvas.get_char_at(next_r, next_c)] or 0
-			if bit.band(next_mask, opposite_bit) == 0 then
-				break
-			end
-			r, c = next_r, next_c
-			moved = true
+		local mask = state.char_to_mask[canvas.get_char_at(row, col)] or 0
+		if bit.band(mask, direction_bit) == 0 then
+			return nil
 		end
-		if moved then
-			canvas.goto_virt_pos(r, c)
-			state.last_dir = nil
-			ui.update_visual_markers()
-			return
+
+		local next_r, next_c = mech.direction_to_coord(direction, row, col)
+		if next_r < 1 or next_r > line_count or next_c < 0 then
+			return nil
+		end
+		local next_mask = state.char_to_mask[canvas.get_char_at(next_r, next_c)] or 0
+		if bit.band(next_mask, C.OPPOSITE_BIT[direction_bit]) == 0 then
+			return nil
+		end
+		return next_r, next_c
+	end
+
+	local directions = { "l", "j", "h", "k" }
+	local selected_direction
+	-- Two passes allow the connected run to wrap around to right.
+	for i = 1, #directions * 2 do
+		local direction = directions[(i - 1) % #directions + 1]
+		if connected_neighbor(r, c, direction) then
+			selected_direction = direction
+		elseif selected_direction then
+			break
 		end
 	end
+	selected_direction = selected_direction or directions[1]
+
+	while true do
+		local next_r, next_c = connected_neighbor(r, c, selected_direction)
+		if not next_r or not next_c then
+			break
+		end
+		r, c = next_r, next_c
+	end
+	canvas.goto_virt_pos(r, c)
+	state.last_dir = nil
+	ui.update_visual_markers()
 end
 
 function M.open_line(above)

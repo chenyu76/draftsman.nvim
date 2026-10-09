@@ -110,7 +110,7 @@ Some keys are remapped to behave similarly to their original Vim functions while
 | ------- | ---------------------------------------- |
 | `?`     | Toggle Help in Sidebar                   |
 | `o/O`   | Insert a blank line while keeping cursor |
-| `%`     | Jump to the first connected segment end   |
+| `%`     | Jump to a connected segment end           |
 | `u`     | Undo                                     |
 | `<C-r>` | Redo                                     |
 | `<Esc>` | Exit                                     |
