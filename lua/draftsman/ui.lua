@@ -80,7 +80,7 @@ function M.update_content()
 			" <x>   Clear Char",
 			-- needless to show
 			-- " <BS>  Backspace",
-			-- " o/O  Newline",
+			" o/O   Newline (keep column)",
 			" <v>   Visual",
 			" <d>   Delete",
 			" <y>   Yank",
@@ -91,6 +91,7 @@ function M.update_content()
 			" <C-r>  Redo",
 			" hjkl   Move/Draw",
 			" HJKL   Move/Draw Fast",
+			" <%>    Jump stroke ends",
 			" 1-" .. num_styles .. "    Style",
 			" <Esc>  Exit",
 		}

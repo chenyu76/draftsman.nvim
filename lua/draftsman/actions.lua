@@ -182,6 +182,48 @@ function M.move_stroke_at(direction, r, c)
 	end
 end
 
+-- Visit straight segment ends in right, up, left, down order.
+function M.jump_stroke_ends()
+	local r, c = canvas.get_cursor_virt_pos()
+	local line_count = vim.api.nvim_buf_line_count(0)
+	if (state.char_to_mask[canvas.get_char_at(r, c)] or 0) == 0 then
+		return
+	end
+
+	for _, direction in ipairs({ "l", "k", "h", "j" }) do
+		local direction_bit = C.DIR_KEY_TO_BIT[direction]
+		local opposite_bit = C.OPPOSITE_BIT[direction_bit]
+		while true do
+			local mask = state.char_to_mask[canvas.get_char_at(r, c)] or 0
+			if bit.band(mask, direction_bit) == 0 then
+				break
+			end
+
+			local next_r, next_c = mech.direction_to_coord(direction, r, c)
+			if next_r < 1 or next_r > line_count or next_c < 0 then
+				break
+			end
+			local next_mask = state.char_to_mask[canvas.get_char_at(next_r, next_c)] or 0
+			if bit.band(next_mask, opposite_bit) == 0 then
+				break
+			end
+			r, c = next_r, next_c
+		end
+	end
+
+	canvas.goto_virt_pos(r, c)
+	state.last_dir = nil
+	ui.update_visual_markers()
+end
+
+function M.open_line(above)
+	local r, c = canvas.get_cursor_virt_pos()
+	vim.cmd(above and "put! =''" or "put =''")
+	canvas.goto_virt_pos(above and r or r + 1, c)
+	state.last_dir = nil
+	ui.update_visual_markers()
+end
+
 function M.move_cursor(direction)
 	local r = canvas.get_virt_row()
 	local c = canvas.get_virt_col()

@@ -50,7 +50,7 @@ function M.init_styles()
 		-- Reverse lookup
 		for mask, char in pairs(parsed.lines) do
 			if char ~= " " then
-				state.char_to_mask[char] = mask
+				state.char_to_mask[char] = bit.bor(state.char_to_mask[char] or 0, mask)
 			end
 		end
 

@@ -104,12 +104,16 @@ Switch line style by pressing `1`. `2`, or `3`. Current style will be shown in s
 
 ### Other Keys
 
-| Key     | Action                 |
-| ------- | ---------------------- |
-| `?`     | Toggle Help in Sidebar |
-| `u`     | Undo                   |
-| `<C-r>` | Redo                   |
-| `<Esc>` | Exit                   |
+Some keys are remapped to behave similarly to their original Vim functions while being better suited for drawing.
+
+| Key     | Action                                   |
+| ------- | ---------------------------------------- |
+| `?`     | Toggle Help in Sidebar                   |
+| `o/O`   | Insert a blank line while keeping cursor |
+| `%`     | Visit connected straight segment ends    |
+| `u`     | Undo                                     |
+| `<C-r>` | Redo                                     |
+| `<Esc>` | Exit                                     |
 
 ## Installation
 

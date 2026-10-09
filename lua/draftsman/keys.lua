@@ -126,11 +126,12 @@ function M.set_mappings(stop_callback)
 	end)
 
 	-- Misc
+	map_and_record("%", actions.jump_stroke_ends)
 	map_and_record("o", function()
-		vim.cmd("put =''")
+		actions.open_line(false)
 	end)
 	map_and_record("O", function()
-		vim.cmd("put! =''")
+		actions.open_line(true)
 	end)
 
 	-- Undo/Redo
