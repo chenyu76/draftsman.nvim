@@ -132,6 +132,8 @@ Some keys are remapped to behave similarly to their original Vim functions while
 | `<C-r>` | Redo                                     |
 | `<Esc>` | Exit                                     |
 
+<img width="302" height="350" alt="cursor" src="https://github.com/user-attachments/assets/a0f7de41-f975-4cb9-97cf-c21854f59bce" />
+
 ## Installation
 
 Install using your favorite package manager.
