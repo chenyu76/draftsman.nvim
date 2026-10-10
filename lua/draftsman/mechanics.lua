@@ -1,5 +1,6 @@
 local config = require("draftsman.config")
 local state = require("draftsman.state")
+local canvas = require("draftsman.canvas")
 local C = require("draftsman.constants")
 local BIT = C.BIT
 
@@ -122,6 +123,65 @@ function M.direction_to_coord(direction, r, c)
 		return r, c + 1
 	end
 	return r, c
+end
+
+-- A connection must be present on both sides of the shared edge.
+function M.connected_neighbor(row, col, direction)
+	local direction_bit = C.DIR_KEY_TO_BIT[direction]
+	local mask = state.char_to_mask[canvas.get_char_at(row, col)] or 0
+	if bit.band(mask, direction_bit) == 0 then
+		return nil
+	end
+
+	local next_r, next_c = M.direction_to_coord(direction, row, col)
+	if next_r < 1 or next_r > vim.api.nvim_buf_line_count(0) or next_c < 0 then
+		return nil
+	end
+	local char = canvas.get_char_at(next_r, next_c)
+	local next_mask = state.char_to_mask[char] or 0
+	if bit.band(next_mask, C.OPPOSITE_BIT[direction_bit]) == 0 then
+		return nil
+	end
+	return { r = next_r, c = next_c, mask = next_mask, char = char }
+end
+
+-- Follow a straight ray; corners and junctions do not change its direction.
+function M.scan_stroke(row, col, direction)
+	local nodes = {}
+	while true do
+		local node = M.connected_neighbor(row, col, direction)
+		if not node then
+			break
+		end
+		nodes[#nodes + 1] = node
+		row, col = node.r, node.c
+	end
+	return nodes
+end
+
+function M.collect_stroke(row, col, directions)
+	local char = canvas.get_char_at(row, col)
+	local mask = state.char_to_mask[char] or 0
+	local nodes = {}
+	if mask == 0 then
+		return nodes
+	end
+	nodes[row .. "," .. col] = { r = row, c = col, mask = mask, char = char }
+	for _, direction in ipairs(directions or { "k", "l", "j", "h" }) do
+		for _, node in ipairs(M.scan_stroke(row, col, direction)) do
+			nodes[node.r .. "," .. node.c] = node
+		end
+	end
+	return nodes
+end
+
+-- Relative positions retain the cursor's place within the stroke.
+function M.stroke_shape(row, col)
+	local shape = {}
+	for _, node in pairs(M.collect_stroke(row, col)) do
+		shape[(node.r - row) .. "," .. (node.c - col)] = node.char
+	end
+	return shape
 end
 
 return M

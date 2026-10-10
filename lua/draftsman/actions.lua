@@ -51,49 +51,8 @@ function M.move_stroke_at(direction, r, c)
 		axis_bits = bor(axis_bits, C.DIR_KEY_TO_BIT[d])
 	end
 
-	-- 2. Scan the Entire Segment
-	-- We collect all connected nodes that share the same perpendicular axis.
-	local strokes_pos = {}
-
-	-- Helper to add node
-	local function add_node(nr, nc, nmask)
-		local key = nr .. "," .. nc
-		if not strokes_pos[key] then
-			strokes_pos[key] = { r = nr, c = nc, mask = nmask }
-		end
-	end
-
-	-- Add current cursor position first
-	add_node(r, c, mask)
-
-	-- Scan in both perpendicular directions
-	for _, scan_dir in ipairs(scan_dirs) do
-		local s_dr, s_dc = mech.direction_to_coord(scan_dir)
-		local scan_bit = C.DIR_KEY_TO_BIT[scan_dir]
-		local opp_scan_bit = C.OPPOSITE_BIT[scan_bit]
-
-		local curr_r, curr_c = r, c
-
-		while true do
-			-- Check current node's connectivity in scan direction
-			local curr_char = get_char(curr_r, curr_c)
-			local curr_mask = char_map[curr_char] or 0
-			if band(curr_mask, scan_bit) == 0 then
-				break
-			end
-
-			-- Check next node's connectivity coming back
-			local next_r, next_c = curr_r + s_dr, curr_c + s_dc
-			local next_char = get_char(next_r, next_c)
-			local next_mask = char_map[next_char] or 0
-			if band(next_mask, opp_scan_bit) == 0 then
-				break
-			end
-
-			add_node(next_r, next_c, next_mask)
-			curr_r, curr_c = next_r, next_c
-		end
-	end
+	-- 2. Collect the connected segment on the perpendicular axis.
+	local strokes_pos = mech.collect_stroke(r, c, scan_dirs)
 
 	-- 3. Calculate Changes
 	-- We store changes in a map to handle overlapping updates correctly.
@@ -194,31 +153,12 @@ function M.jump_stroke_ends()
 		return
 	end
 
-	local line_count = vim.api.nvim_buf_line_count(0)
-	local function connected_neighbor(row, col, direction)
-		local direction_bit = C.DIR_KEY_TO_BIT[direction]
-		local mask = state.char_to_mask[canvas.get_char_at(row, col)] or 0
-		if bit.band(mask, direction_bit) == 0 then
-			return nil
-		end
-
-		local next_r, next_c = mech.direction_to_coord(direction, row, col)
-		if next_r < 1 or next_r > line_count or next_c < 0 then
-			return nil
-		end
-		local next_mask = state.char_to_mask[canvas.get_char_at(next_r, next_c)] or 0
-		if bit.band(next_mask, C.OPPOSITE_BIT[direction_bit]) == 0 then
-			return nil
-		end
-		return next_r, next_c
-	end
-
 	local directions = { "l", "j", "h", "k" }
 	local selected_direction
 	-- Two passes allow the connected run to wrap around to right.
 	for i = 1, #directions * 2 do
 		local direction = directions[(i - 1) % #directions + 1]
-		if connected_neighbor(r, c, direction) then
+		if mech.connected_neighbor(r, c, direction) then
 			selected_direction = direction
 		elseif selected_direction then
 			break
@@ -226,16 +166,45 @@ function M.jump_stroke_ends()
 	end
 	selected_direction = selected_direction or directions[1]
 
-	while true do
-		local next_r, next_c = connected_neighbor(r, c, selected_direction)
-		if not next_r or not next_c then
-			break
-		end
-		r, c = next_r, next_c
+	local nodes = mech.scan_stroke(r, c, selected_direction)
+	if #nodes > 0 then
+		r, c = nodes[#nodes].r, nodes[#nodes].c
 	end
 	canvas.goto_virt_pos(r, c)
 	state.last_dir = nil
 	ui.update_visual_markers()
+end
+
+function M.search_stroke(backward)
+	local r, c = canvas.get_cursor_virt_pos()
+	local char = canvas.get_char_at(r, c)
+	if (state.char_to_mask[char] or 0) == 0 then
+		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+		vim.cmd("normal! " .. count .. (backward and "#" or "*"))
+		return
+	end
+
+	local shape = mech.stroke_shape(r, c)
+	local pattern = "\\C\\V" .. vim.fn.escape(char, "\\")
+	local flags = backward and "bs" or "s"
+	local moved = false
+	for _ = 1, vim.v.count1 do
+		local before = vim.api.nvim_win_get_cursor(0)
+		local found = vim.fn.searchpos(pattern, flags, 0, 0, function()
+			local row, col = canvas.get_cursor_virt_pos()
+			return not vim.deep_equal(shape, mech.stroke_shape(row, col))
+		end)
+		if found[1] == 0 or vim.deep_equal(before, vim.api.nvim_win_get_cursor(0)) then
+			break
+		end
+		moved = true
+	end
+	if moved then
+		state.last_dir = nil
+		ui.update_visual_markers()
+	else
+		ui.update_status("No other matching stroke.")
+	end
 end
 
 function M.open_line(above)

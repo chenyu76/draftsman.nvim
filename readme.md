@@ -127,6 +127,7 @@ Some keys are remapped to behave similarly to their original Vim functions while
 | `?`     | Toggle Help in Sidebar                   |
 | `o/O`   | Insert a blank line while keeping cursor |
 | `%`     | Jump to a connected segment end           |
+| `* / #` | Find the next / previous identical stroke |
 | `u`     | Undo                                     |
 | `<C-r>` | Redo                                     |
 | `<Esc>` | Exit                                     |

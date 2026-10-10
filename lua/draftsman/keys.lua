@@ -127,6 +127,12 @@ function M.set_mappings(stop_callback)
 
 	-- Misc
 	map_and_record("%", actions.jump_stroke_ends)
+	map_and_record("*", function()
+		actions.search_stroke(false)
+	end)
+	map_and_record("#", function()
+		actions.search_stroke(true)
+	end)
 	map_and_record("o", function()
 		actions.open_line(false)
 	end)
