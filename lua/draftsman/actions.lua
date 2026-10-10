@@ -235,12 +235,26 @@ function M.move_cursor(direction)
 
 	-- Expand buffer if needed
 	local line_count = vim.api.nvim_buf_line_count(0)
-	if r > line_count then
-		vim.api.nvim_buf_set_lines(0, line_count, line_count, false, { "" })
+	local bottom = r
+	if state.moving_selection then
+		bottom = r - state.moving_selection.row_offset + state.clipboard.height - 1
+	end
+	if bottom > line_count then
+		local lines = {}
+		for _ = line_count + 1, bottom do
+			lines[#lines + 1] = ""
+		end
+		if state.moving_selection then
+			vim.cmd("undojoin")
+		end
+		vim.api.nvim_buf_set_lines(0, line_count, line_count, false, lines)
 	end
 
 	if state.mode == "move" then
-		if r ~= old_r or c ~= old_c then
+		if state.moving_selection then
+			r = math.max(r, state.moving_selection.row_offset + 1)
+			c = math.max(c, state.moving_selection.col_offset)
+		elseif r ~= old_r or c ~= old_c then
 			if mech.char_to_mask(canvas.get_char_at(old_r, old_c)) ~= 0 then
 				r, c = M.move_stroke_at(direction, old_r, old_c)
 			else
@@ -376,18 +390,7 @@ function M.cut_visualization()
 	ui.update_status("Deleted.\nUse <p> or <P> to paste.")
 end
 
-function M.paste_clipboard(reverse_row, reverse_col)
-	if not state.clipboard then
-		return ui.update_status("Clipboard empty.\nUse <v> to visual\nand <y> to yank first.")
-	end
-
-	local row_offset = reverse_row and -(state.clipboard.height - 1) or 0
-	local col_offset = reverse_col and -(state.clipboard.width - 1) or 0
-
-	local r, c = canvas.get_cursor_virt_pos()
-	r = r + row_offset
-	c = c + col_offset
-
+local function paste_at(r, c)
 	for i, line_content in ipairs(state.clipboard.lines) do
 		local target_r = r + i - 1
 		local len_chars = vim.fn.strchars(line_content)
@@ -398,6 +401,40 @@ function M.paste_clipboard(reverse_row, reverse_col)
 			end
 		end
 	end
+end
+
+function M.start_selection_move()
+	local rect = get_visualization_rect()
+	local row, col = canvas.get_cursor_virt_pos()
+	M.cut_visualization()
+	state.moving_selection = { row_offset = row - rect.top, col_offset = col - rect.left }
+	state.mode, state.last_dir = "move", nil
+	ui.update_visual_markers()
+	ui.update_status("Move Selection.\n<m> to commit.")
+end
+
+function M.finish_selection_move()
+	if not state.moving_selection then
+		return
+	end
+	local row, col = canvas.get_cursor_virt_pos()
+	-- Cutting and dropping the selection form one undo operation.
+	vim.cmd("undojoin")
+	paste_at(row - state.moving_selection.row_offset, col - state.moving_selection.col_offset)
+	state.moving_selection = nil
+	state.mode = nil
+	ui.update_visual_markers()
+end
+
+function M.paste_clipboard(reverse_row, reverse_col)
+	if not state.clipboard then
+		return ui.update_status("Clipboard empty.\nUse <v> to visual\nand <y> to yank first.")
+	end
+
+	local row_offset = reverse_row and -(state.clipboard.height - 1) or 0
+	local col_offset = reverse_col and -(state.clipboard.width - 1) or 0
+	local row, col = canvas.get_cursor_virt_pos()
+	paste_at(row + row_offset, col + col_offset)
 	ui.update_status("Pasted")
 end
 

@@ -76,7 +76,7 @@ function M.update_content()
 			" <" .. key.insert_text .. ">   Insert Text",
 			"",
 			"Editing Tools:",
-			" <" .. key.move .. ">   Move stroke/word",
+			" <" .. key.move .. ">   Move",
 			" <x>   Clear Char",
 			-- needless to show
 			-- " <BS>  Backspace",
@@ -159,6 +159,25 @@ end
 function M.update_visual_markers()
 	if state.ns_id then
 		vim.api.nvim_buf_clear_namespace(0, state.ns_id, 0, -1)
+	end
+	if state.moving_selection then
+		local row, col = canvas.get_cursor_virt_pos()
+		row = row - state.moving_selection.row_offset
+		col = col - state.moving_selection.col_offset - vim.fn.winsaveview().leftcol
+		for i, line in ipairs(state.clipboard.lines) do
+			for j = 1, vim.fn.strchars(line) do
+				local char = vim.fn.strcharpart(line, j - 1, 1)
+				if char ~= " " and col + j - 1 >= 0 then
+					vim.api.nvim_buf_set_extmark(0, state.ns_id, row + i - 2, 0, {
+						virt_text = { { char, "MatchParen" } },
+						virt_text_pos = "overlay",
+						virt_text_win_col = col + j - 1,
+						priority = 200,
+					})
+				end
+			end
+		end
+		return
 	end
 	if (state.mode == "visual" or state.mode == "rectangle") and state.rectangle_start then
 		local r1, c1 = state.rectangle_start[1], state.rectangle_start[2]

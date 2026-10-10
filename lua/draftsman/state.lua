@@ -19,6 +19,7 @@ M.reset = function()
 	M.mapped_keys = {}
 	M.old_cr_mapping = nil
 	M.clipboard = nil
+	M.moving_selection = nil -- cursor offsets from the selected top-left cell
 
 	-- Cached lookups (populated by mechanics)
 	M.parsed_styles = {}

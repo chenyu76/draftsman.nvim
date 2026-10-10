@@ -7,8 +7,16 @@ local C = require("draftsman.constants")
 
 local M = {}
 
-local function map_and_record(key, callback)
-	vim.keymap.set("n", key, callback, { noremap = true, silent = true, buffer = 0, nowait = true })
+local function map_and_record(key, callback, keep_selection)
+	vim.keymap.set("n", key, function()
+		if not keep_selection then
+			actions.finish_selection_move()
+		end
+		callback()
+		if state.moving_selection then
+			ui.update_visual_markers()
+		end
+	end, { noremap = true, silent = true, buffer = 0, nowait = true })
 	table.insert(state.mapped_keys, key)
 end
 
@@ -20,12 +28,12 @@ function M.set_mappings(stop_callback)
 	for _, k in ipairs({ "h", "j", "k", "l" }) do
 		map_and_record(k, function()
 			actions.move_cursor(k)
-		end)
+		end, true)
 		map_and_record(string.upper(k), function()
 			for _ = 1, 5 do
 				actions.move_cursor(k)
 			end
-		end)
+		end, true)
 	end
 	local direction_mappings = {
 		["<Left>"] = "h",
@@ -36,7 +44,7 @@ function M.set_mappings(stop_callback)
 	for k, direction in pairs(direction_mappings) do
 		map_and_record(k, function()
 			actions.move_cursor(direction)
-		end)
+		end, true)
 	end
 
 	-- Tools
@@ -60,14 +68,17 @@ function M.set_mappings(stop_callback)
 		end
 	end)
 	map_and_record(key.move, function()
-		if state.mode == "move" then
+		if state.mode == "visual" then
+			actions.start_selection_move()
+		elseif state.mode == "move" then
+			actions.finish_selection_move()
 			state.mode = nil
 			ui.update_status("Ended Move Tool.")
 		else
 			state.mode = "move"
 			ui.update_status("Move Tool.\n<m> to commit.")
 		end
-	end)
+	end, true)
 	map_and_record("i", function()
 		state.mode = "text"
 		state.text_start_col = canvas.get_virt_col()
@@ -94,7 +105,7 @@ function M.set_mappings(stop_callback)
 		state.mode = "visual"
 		state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 		ui.update_visual_markers()
-		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<Esc> to cancel.")
+		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<m> to move. \n<Esc> to cancel.")
 	end)
 
 	-- Clipboard
@@ -194,6 +205,7 @@ function M.set_mappings(stop_callback)
 	-- Stop any active mode if any. Otherwise, exit the plugin.
 	map_and_record("<Esc>", function()
 		if state.mode ~= nil then
+			actions.finish_selection_move()
 			state.mode = nil
 			state.rectangle_start = nil
 			ui.update_visual_markers()
@@ -201,7 +213,7 @@ function M.set_mappings(stop_callback)
 		else
 			stop_callback()
 		end
-	end)
+	end, true)
 	-- Monitor InsertLeave to stop text mode
 	local group_id = vim.api.nvim_create_augroup(C.TEXT_INPUT_GROUP_NAME, { clear = true })
 	vim.api.nvim_create_autocmd("InsertLeave", {

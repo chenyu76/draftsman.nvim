@@ -47,6 +47,7 @@ function M.stop()
 	if not state.active then
 		return
 	end
+	require("draftsman.actions").finish_selection_move()
 	state.active = false
 	vim.o.virtualedit = state.original_ve
 

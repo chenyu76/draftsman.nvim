@@ -100,7 +100,8 @@ Draftsman has its own internal clipboard for moving parts of diagrams around.
 - **Select (`v`)**: Enter visual selection mode. It is use for select rectangular area like press `<C-v>` in normal mode in vim.
   1.  Press `v` to start. a Mark will appear.
   2.  Move the cursor to choose a rectangular area.
-  3.  Yank or delete the chosen area.
+  3.  Yank, delete, or move the chosen area.
+- **Move (`m`)**: Cut the selection and move with `hjkl`. Press `m` again to paste it. 
 - **Yank (`y`)**: Copy the selected area.
 - **Delete (`d`)**: Cut/Clear the selected area.
 - **Paste (`p`)**: Paste the clipboard content at the current cursor position.
