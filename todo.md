@@ -1,7 +1,7 @@
 # TODO
 
 - disable the visibility of space tab. etc.
-- some GIFs in readme
+- [x] some GIFs in readme
 - options:
   - esc_to_exit
   - disable_sidebar
