@@ -1,6 +1,5 @@
 local config = require("draftsman.config")
 local state = require("draftsman.state")
-local canvas = require("draftsman.canvas")
 local C = require("draftsman.constants")
 local BIT = C.BIT
 
@@ -126,18 +125,15 @@ function M.direction_to_coord(direction, r, c)
 end
 
 -- A connection must be present on both sides of the shared edge.
-function M.connected_neighbor(row, col, direction)
+function M.connected_neighbor(row, col, direction, get_char)
 	local direction_bit = C.DIR_KEY_TO_BIT[direction]
-	local mask = state.char_to_mask[canvas.get_char_at(row, col)] or 0
+	local mask = state.char_to_mask[get_char(row, col)] or 0
 	if bit.band(mask, direction_bit) == 0 then
 		return nil
 	end
 
 	local next_r, next_c = M.direction_to_coord(direction, row, col)
-	if next_r < 1 or next_r > vim.api.nvim_buf_line_count(0) or next_c < 0 then
-		return nil
-	end
-	local char = canvas.get_char_at(next_r, next_c)
+	local char = get_char(next_r, next_c)
 	local next_mask = state.char_to_mask[char] or 0
 	if bit.band(next_mask, C.OPPOSITE_BIT[direction_bit]) == 0 then
 		return nil
@@ -146,42 +142,67 @@ function M.connected_neighbor(row, col, direction)
 end
 
 -- Follow a straight ray; corners and junctions do not change its direction.
-function M.scan_stroke(row, col, direction)
-	local nodes = {}
-	while true do
-		local node = M.connected_neighbor(row, col, direction)
-		if not node then
-			break
+function M.scan_stroke(row, col, direction, get_char)
+	return function()
+		local node = M.connected_neighbor(row, col, direction, get_char)
+		if node then
+			row, col = node.r, node.c
 		end
-		nodes[#nodes + 1] = node
-		row, col = node.r, node.c
+		return node
 	end
-	return nodes
 end
 
-function M.collect_stroke(row, col, directions)
-	local char = canvas.get_char_at(row, col)
+function M.collect_stroke(row, col, directions, get_char)
+	local char = get_char(row, col)
 	local mask = state.char_to_mask[char] or 0
 	local nodes = {}
 	if mask == 0 then
 		return nodes
 	end
 	nodes[row .. "," .. col] = { r = row, c = col, mask = mask, char = char }
-	for _, direction in ipairs(directions or { "k", "l", "j", "h" }) do
-		for _, node in ipairs(M.scan_stroke(row, col, direction)) do
+	for _, direction in ipairs(directions) do
+		for node in M.scan_stroke(row, col, direction, get_char) do
 			nodes[node.r .. "," .. node.c] = node
 		end
 	end
 	return nodes
 end
 
--- Relative positions retain the cursor's place within the stroke.
-function M.stroke_shape(row, col)
-	local shape = {}
-	for _, node in pairs(M.collect_stroke(row, col)) do
-		shape[(node.r - row) .. "," .. (node.c - col)] = node.char
+-- Compile a comparison once per search. Test endpoints first, then compare
+-- cells directly; equal characters imply the same interior connections.
+function M.stroke_matcher(row, col, get_char)
+	local center = get_char(row, col)
+	local rays = {}
+	for _, direction in ipairs({ "k", "l", "j", "h" }) do
+		local dr, dc = M.direction_to_coord(direction)
+		local chars = {}
+		for node in M.scan_stroke(row, col, direction, get_char) do
+			chars[#chars + 1] = node.char
+		end
+		rays[#rays + 1] = { direction = direction, dr = dr, dc = dc, chars = chars }
 	end
-	return shape
+	return function(r, c)
+		if get_char(r, c) ~= center then
+			return false
+		end
+		for _, ray in ipairs(rays) do
+			local length = #ray.chars
+			local end_r, end_c = r + ray.dr * length, c + ray.dc * length
+			local end_char = ray.chars[length] or center
+			if get_char(end_r, end_c) ~= end_char
+				or M.connected_neighbor(end_r, end_c, ray.direction, get_char) then
+				return false
+			end
+		end
+		for _, ray in ipairs(rays) do
+			for offset, char in ipairs(ray.chars) do
+				if get_char(r + ray.dr * offset, c + ray.dc * offset) ~= char then
+					return false
+				end
+			end
+		end
+		return true
+	end
 end
 
 return M

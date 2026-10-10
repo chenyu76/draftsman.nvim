@@ -1,5 +1,22 @@
 local M = {}
 
+-- Vim groups composing marks with their base character when splitting at \zs.
+local function line_cells(line, tabstop)
+	local chars = vim.fn.split(line, [[\zs]])
+	local index, byte, col = 0, 0, 0
+	return function()
+		index = index + 1
+		local char = chars[index]
+		if not char then
+			return nil
+		end
+		local start_byte, start_col = byte, col
+		local width = char == "\t" and tabstop - (col % tabstop) or vim.fn.strdisplaywidth(char)
+		byte, col = byte + #char, col + width
+		return char, start_byte, start_col, width
+	end
+end
+
 function M.get_virt_col()
 	return vim.fn.virtcol(".") - 1
 end
@@ -41,37 +58,18 @@ function M.get_byte_range(row, target_virt_col)
 	local line = lines[1] or ""
 	local tabstop = vim.bo.tabstop
 
-	local current_virt = 0
-	local char_idx = 0
-	local byte_idx = 0
-	local len_chars = vim.fn.strchars(line)
-
-	for i = 0, len_chars - 1 do
-		local char = vim.fn.strcharpart(line, i, 1)
-		local w = vim.fn.strwidth(char)
-
-		if char == "\t" then
-			w = tabstop - (current_virt % tabstop)
+	for char, byte, col, width in line_cells(line, tabstop) do
+		if target_virt_col < col + width then
+			return byte, byte + #char, line, width, char == "\t"
 		end
-
-		if target_virt_col < current_virt + w then
-			local next_byte_idx = vim.fn.byteidx(line, i + 1)
-			return byte_idx, next_byte_idx, line, w, (char == "\t")
-		end
-
-		current_virt = current_virt + w
-		byte_idx = vim.fn.byteidx(line, i + 1)
 	end
 
-	local pad_len = target_virt_col - current_virt
-	pad_len = pad_len < 0 and 0 or pad_len
 	return #line, #line, line, 0, false
 end
 
--- NOTE: get_char_at return " "
--- if out of bounds or at a tab character
+-- Tabs and virtual cells past the line end are read as spaces.
 function M.get_char_at(row, virt_col)
-	local start_b, end_b, line, width, is_tab = M.get_byte_range(row, virt_col)
+	local start_b, end_b, line, _, is_tab = M.get_byte_range(row, virt_col)
 
 	if is_tab then
 		return " "
@@ -82,6 +80,31 @@ function M.get_char_at(row, virt_col)
 	end
 
 	return string.sub(line, start_b + 1, end_b)
+end
+
+-- Reuse within a read phase; cached rows become stale after buffer writes.
+function M.char_reader()
+	local rows = {}
+	local line_count = vim.api.nvim_buf_line_count(0)
+	local tabstop = vim.bo.tabstop
+	return function(row, col)
+		if row < 1 or row > line_count or col < 0 then
+			return " "
+		end
+		local cells = rows[row]
+		if not cells then
+			cells = {}
+			local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+			for char, _, col_start, width in line_cells(line, tabstop) do
+				local cell = char == "\t" and " " or char
+				for offset = 0, width - 1 do
+					cells[col_start + offset] = cell
+				end
+			end
+			rows[row] = cells
+		end
+		return cells[col] or " "
+	end
 end
 
 function M.set_char_at(row, virt_col, char)
@@ -102,20 +125,7 @@ function M.set_char_at(row, virt_col, char)
 
 	-- fill spaces if virt_col exceeds current line length
 	if start_b == #line and end_b == #line then
-		local current_virt_width = 0
-		local temp_virt = 0
-		local len_chars = vim.fn.strchars(line)
-		local tabstop = vim.bo.tabstop
-		for i = 0, len_chars - 1 do
-			local c = vim.fn.strcharpart(line, i, 1)
-			local w = vim.fn.strwidth(c)
-			if c == "\t" then
-				w = tabstop - (temp_virt % tabstop)
-			end
-			temp_virt = temp_virt + w
-		end
-
-		local pad_len = virt_col - temp_virt
+		local pad_len = virt_col - vim.fn.strdisplaywidth(line)
 		if pad_len > 0 then
 			local padding = string.rep(" ", pad_len)
 			line = line .. padding
@@ -132,11 +142,7 @@ function M.set_char_at(row, virt_col, char)
 		start_b, end_b = M.get_byte_range(row, virt_col)
 	end
 
-	if start_b > #vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1] then
-		return M.set_char_at(row, virt_col, char)
-	end
-
-	vim.api.nvim_buf_set_text(0, row - 1, start_b, row - 1, end_b or start_b, { char })
+	vim.api.nvim_buf_set_text(0, row - 1, start_b, row - 1, end_b, { char })
 
 	M.goto_virt_pos(cur_r, cur_c)
 end

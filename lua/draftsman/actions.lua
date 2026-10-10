@@ -21,57 +21,45 @@ end
 --- @param r number: row
 --- @param c number: col
 function M.move_stroke_at(direction, r, c)
-	-- Cache external functions and tables for performance
-	local get_char = canvas.get_char_at
+	local get_char = canvas.char_reader()
 	local set_char = canvas.set_char_at
 	local char_map = state.char_to_mask
 	local bor, band, bnot = bit.bor, bit.band, bit.bnot
 
-	-- 0. Validation
 	local char = get_char(r, c)
 	local mask = char_map[char] or 0
 
 	if mask == 0 then
-		if ui and ui.update_status then
-			ui.update_status("No stroke to move.\nPlace cursor on an stroke character.")
-		end
+		ui.update_status("No stroke to move.\nPlace cursor on a stroke character.")
 		return
 	end
 
-	-- 1. Prepare Basic Parameters
 	local move_dr, move_dc = mech.direction_to_coord(direction)
 	local move_bit = C.DIR_KEY_TO_BIT[direction]
 	local rev_bit = C.OPPOSITE_BIT[move_bit]
 
-	-- Determine Scan Axis (Perpendicular to movement)
-	-- If moving Horizontal (h/l), scan Vertical (j/k), and vice versa.
+	-- Move only the segment perpendicular to the movement direction.
 	local scan_dirs = (direction == "h" or direction == "l") and { "j", "k" } or { "h", "l" }
 	local axis_bits = 0
 	for _, d in ipairs(scan_dirs) do
 		axis_bits = bor(axis_bits, C.DIR_KEY_TO_BIT[d])
 	end
 
-	-- 2. Collect the connected segment on the perpendicular axis.
-	local strokes_pos = mech.collect_stroke(r, c, scan_dirs)
+	local strokes_pos = mech.collect_stroke(r, c, scan_dirs, get_char)
 
-	-- 3. Calculate Changes
-	-- We store changes in a map to handle overlapping updates correctly.
+	-- Compute all changes before writing, since source and target cells overlap.
 	local changes = {}
 
 	for key, node in pairs(strokes_pos) do
-		-- A. Separate Mask Components
 		-- moving_part: The stroke actually moving (e.g., │ moving sideways)
 		-- stationary_part: The connectors staying behind (e.g., ─ connected to │)
 		local moving_part = band(node.mask, axis_bits)
 		local stationary_part = band(node.mask, bnot(axis_bits))
 
-		-- Are we collapsing? (Moving INTO an existing connection)
 		local is_collapsing = band(stationary_part, move_bit) ~= 0
 
-		-- Do we have a tail? (Connection opposite to movement)
 		local has_tail = band(stationary_part, rev_bit) ~= 0
 
-		-- === Handle Old Position ===
 		local old_mask_final = stationary_part
 
 		if is_collapsing then
@@ -88,13 +76,11 @@ function M.move_stroke_at(direction, r, c)
 		local old_char = mech.resolve_char(0, old_mask_final, 0)
 		changes[key] = { r = node.r, c = node.c, char = old_char }
 
-		-- === Handle New Position ===
 		local new_r = node.r + move_dr
 		local new_c = node.c + move_dc
 		local new_key = new_r .. "," .. new_c
 
-		-- Resolve target background
-		-- If the target is already in our `changes` table (updated by this loop), use that.
+		-- Pending changes take precedence over the original buffer.
 		local target_mask = 0
 		if changes[new_key] then
 			target_mask = char_map[changes[new_key].char] or 0
@@ -108,7 +94,6 @@ function M.move_stroke_at(direction, r, c)
 			target_mask = band(target_mask, bnot(rev_bit))
 		end
 
-		-- Calculate shape at new position
 		local new_mask_add = moving_part
 
 		if stationary_part > 0 then
@@ -116,10 +101,7 @@ function M.move_stroke_at(direction, r, c)
 				-- [Collapse/Slide]: Inherit stationary parts
 				local parts_to_add = stationary_part
 
-				-- Prevent extra connections when sliding.
-				-- If moving a perpendicular stroke (moving_part > 0) AND there is a connection
-				-- in the move direction, that connection is now "traversed" and should be removed.
-				-- (Exception: If simply extending a parallel line, keep it).
+				-- Sliding a perpendicular segment consumes its forward connection.
 				if moving_part > 0 then
 					parts_to_add = band(parts_to_add, bnot(move_bit))
 				end
@@ -135,7 +117,6 @@ function M.move_stroke_at(direction, r, c)
 		changes[new_key] = { r = new_r, c = new_c, char = new_char }
 	end
 
-	-- 4. Apply Changes
 	for _, change in pairs(changes) do
 		set_char(change.r, change.c, change.char)
 	end
@@ -144,9 +125,9 @@ end
 -- Choose the last connected direction before a gap, scanning clockwise from right.
 function M.jump_stroke_ends()
 	local r, c = canvas.get_cursor_virt_pos()
+	local get_char = canvas.char_reader()
 
-    -- fallback to normal %
-	local mask = state.char_to_mask[canvas.get_char_at(r, c)] or 0
+	local mask = state.char_to_mask[get_char(r, c)] or 0
 	if mask == 0 then
 		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
 		vim.cmd("normal! " .. count .. "%")
@@ -158,7 +139,7 @@ function M.jump_stroke_ends()
 	-- Two passes allow the connected run to wrap around to right.
 	for i = 1, #directions * 2 do
 		local direction = directions[(i - 1) % #directions + 1]
-		if mech.connected_neighbor(r, c, direction) then
+		if mech.connected_neighbor(r, c, direction, get_char) then
 			selected_direction = direction
 		elseif selected_direction then
 			break
@@ -166,9 +147,8 @@ function M.jump_stroke_ends()
 	end
 	selected_direction = selected_direction or directions[1]
 
-	local nodes = mech.scan_stroke(r, c, selected_direction)
-	if #nodes > 0 then
-		r, c = nodes[#nodes].r, nodes[#nodes].c
+	for node in mech.scan_stroke(r, c, selected_direction, get_char) do
+		r, c = node.r, node.c
 	end
 	canvas.goto_virt_pos(r, c)
 	state.last_dir = nil
@@ -177,22 +157,24 @@ end
 
 function M.search_stroke(backward)
 	local r, c = canvas.get_cursor_virt_pos()
-	local char = canvas.get_char_at(r, c)
+	local get_char = canvas.char_reader()
+	local char = get_char(r, c)
 	if (state.char_to_mask[char] or 0) == 0 then
 		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
 		vim.cmd("normal! " .. count .. (backward and "#" or "*"))
 		return
 	end
 
-	local shape = mech.stroke_shape(r, c)
+	local matches = mech.stroke_matcher(r, c, get_char)
 	local pattern = "\\C\\V" .. vim.fn.escape(char, "\\")
-	local flags = backward and "bs" or "s"
+	local flags = backward and "b" or ""
+	local origin = vim.fn.getpos(".")
 	local moved = false
 	for _ = 1, vim.v.count1 do
 		local before = vim.api.nvim_win_get_cursor(0)
 		local found = vim.fn.searchpos(pattern, flags, 0, 0, function()
 			local row, col = canvas.get_cursor_virt_pos()
-			return not vim.deep_equal(shape, mech.stroke_shape(row, col))
+			return not matches(row, col)
 		end)
 		if found[1] == 0 or vim.deep_equal(before, vim.api.nvim_win_get_cursor(0)) then
 			break
@@ -200,6 +182,7 @@ function M.search_stroke(backward)
 		moved = true
 	end
 	if moved then
+		vim.fn.setpos("''", origin)
 		state.last_dir = nil
 		ui.update_visual_markers()
 	else
@@ -337,12 +320,13 @@ function M.copy_visualization()
 	end
 
 	local lines = {}
+	local get_char = canvas.char_reader()
 	for r = rect.top, rect.bottom do
-		local line_str = ""
+		local chars = {}
 		for c = rect.left, rect.right do
-			line_str = line_str .. canvas.get_char_at(r, c)
+			chars[#chars + 1] = get_char(r, c)
 		end
-		table.insert(lines, line_str)
+		lines[#lines + 1] = table.concat(chars)
 	end
 
 	state.clipboard = { lines = lines, width = rect.right - rect.left + 1, height = rect.bottom - rect.top + 1 }
