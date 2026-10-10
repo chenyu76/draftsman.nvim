@@ -70,13 +70,14 @@ function M.set_mappings(stop_callback)
 	map_and_record(key.move, function()
 		if state.mode == "visual" then
 			actions.start_selection_move()
+			ui.update_status("Move Selection.\n<" .. key.move .. "> to commit.")
 		elseif state.mode == "move" then
 			actions.finish_selection_move()
 			state.mode = nil
 			ui.update_status("Ended Move Tool.")
 		else
 			state.mode = "move"
-			ui.update_status("Move Tool.\n<m> to commit.")
+			ui.update_status("Move Tool.\n<" .. key.move .. "> to commit.")
 		end
 	end, true)
 	map_and_record("i", function()
@@ -105,7 +106,7 @@ function M.set_mappings(stop_callback)
 		state.mode = "visual"
 		state.rectangle_start = { canvas.get_virt_row(), canvas.get_virt_col() }
 		ui.update_visual_markers()
-		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<m> to move. \n<Esc> to cancel.")
+		ui.update_status("Visual. \n<d> to delete. \n<y> to yank. \n<" .. key.move .. "> to move. \n<Esc> to cancel.")
 	end)
 
 	-- Clipboard

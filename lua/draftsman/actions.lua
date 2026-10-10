@@ -410,7 +410,6 @@ function M.start_selection_move()
 	state.moving_selection = { row_offset = row - rect.top, col_offset = col - rect.left }
 	state.mode, state.last_dir = "move", nil
 	ui.update_visual_markers()
-	ui.update_status("Move Selection.\n<m> to commit.")
 end
 
 function M.finish_selection_move()
