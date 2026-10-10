@@ -185,6 +185,15 @@ end
 -- Choose the last connected direction before a gap, scanning clockwise from right.
 function M.jump_stroke_ends()
 	local r, c = canvas.get_cursor_virt_pos()
+
+    -- fallback to normal %
+	local mask = state.char_to_mask[canvas.get_char_at(r, c)] or 0
+	if mask == 0 then
+		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+		vim.cmd("normal! " .. count .. "%")
+		return
+	end
+
 	local line_count = vim.api.nvim_buf_line_count(0)
 	local function connected_neighbor(row, col, direction)
 		local direction_bit = C.DIR_KEY_TO_BIT[direction]
