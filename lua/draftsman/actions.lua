@@ -18,20 +18,24 @@ end
 
 --- Moves a connected stroke segment in a specific direction.
 --- @param direction string: 'h', 'j', 'k', or 'l'
---- @param r number: row
---- @param c number: col
-function M.move_stroke_at(direction, r, c)
+--- @param row number: row
+--- @param col number: virtual column
+function M.move_stroke_at(direction, row, col)
+	local next_row, next_col = mech.direction_to_coord(direction, row, col)
+	if next_row < 1 or next_col < 0 then
+		return row, col
+	end
 	local get_char = canvas.char_reader()
 	local set_char = canvas.set_char_at
 	local char_map = state.char_to_mask
 	local bor, band, bnot = bit.bor, bit.band, bit.bnot
 
-	local char = get_char(r, c)
+	local char = get_char(row, col)
 	local mask = char_map[char] or 0
 
 	if mask == 0 then
 		ui.update_status("No stroke to move.\nPlace cursor on a stroke character.")
-		return
+		return row, col
 	end
 
 	local move_dr, move_dc = mech.direction_to_coord(direction)
@@ -45,7 +49,7 @@ function M.move_stroke_at(direction, r, c)
 		axis_bits = bor(axis_bits, C.DIR_KEY_TO_BIT[d])
 	end
 
-	local strokes_pos = mech.collect_stroke(r, c, scan_dirs, get_char)
+	local strokes_pos = mech.collect_stroke(row, col, scan_dirs, get_char)
 
 	-- Compute all changes before writing, since source and target cells overlap.
 	local changes = {}
@@ -120,6 +124,7 @@ function M.move_stroke_at(direction, r, c)
 	for _, change in pairs(changes) do
 		set_char(change.r, change.c, change.char)
 	end
+	return next_row, next_col
 end
 
 -- Choose the last connected direction before a gap, scanning clockwise from right.
@@ -198,6 +203,24 @@ function M.open_line(above)
 	ui.update_visual_markers()
 end
 
+function M.move_word_at(direction, row, col)
+	local next_row, next_col = mech.direction_to_coord(direction, row, col)
+	if next_row < 1 or next_col < 0 then
+		return row, col
+	end
+	local word, start_col, width = canvas.word_at(row, col)
+	if word then
+		local target_row, target_col = mech.direction_to_coord(direction, row, start_col)
+		if target_col < 0 then
+			return row, col
+		end
+		-- Clear first so horizontal moves can overlap the original word.
+		canvas.replace_span(row, start_col, width, string.rep(" ", width))
+		canvas.replace_span(target_row, target_col, width, word)
+	end
+	return next_row, next_col
+end
+
 function M.move_cursor(direction)
 	local r = canvas.get_virt_row()
 	local c = canvas.get_virt_col()
@@ -219,14 +242,18 @@ function M.move_cursor(direction)
 
 	if state.mode == "move" then
 		if r ~= old_r or c ~= old_c then
-			M.move_stroke_at(direction, old_r, old_c)
+			if (state.char_to_mask[canvas.get_char_at(old_r, old_c)] or 0) ~= 0 then
+				r, c = M.move_stroke_at(direction, old_r, old_c)
+			else
+				r, c = M.move_word_at(direction, old_r, old_c)
+			end
 		end
 	end
 
 	canvas.goto_virt_pos(r, c)
 
 	-- Handle double-width chars movement adjustments
-	if direction == "h" and canvas.get_virt_col() == old_c and c > 0 then
+	if direction == "h" and c < old_c and canvas.get_virt_col() == old_c and c > 0 then
 		canvas.goto_virt_pos(r, old_c - 2)
 	end
 

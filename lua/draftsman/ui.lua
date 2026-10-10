@@ -76,7 +76,7 @@ function M.update_content()
 			" <" .. key.insert_text .. ">   Insert Text",
 			"",
 			"Editing Tools:",
-			" <" .. key.move .. ">   Move stroke",
+			" <" .. key.move .. ">   Move stroke/word",
 			" <x>   Clear Char",
 			-- needless to show
 			-- " <BS>  Backspace",

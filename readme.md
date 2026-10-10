@@ -57,7 +57,6 @@ Draw continuous lines. The plugin handles corners and intersections automaticall
 <img width="428" height="350" alt="stroke" src="https://github.com/user-attachments/assets/704388f9-6cd8-4cbc-a8d5-3266847ccc32" />
 <img width="456" height="350" alt="arrow" src="https://github.com/user-attachments/assets/fa0b900d-aab8-463f-a408-45729f251175" />
 
-
 ### Draw rectangle (`<r>`)
 
 Draw rectangles instantly.
@@ -77,13 +76,13 @@ Press `i` to insert text. This allows you to type labels over lines without dest
 
 <img width="470" height="350" alt="text" src="https://github.com/user-attachments/assets/660d1a38-467a-4468-8610-c7f8c08177f6" />
 
-### Move Stroke (`<m>`)
+### Move (`<m>`)
 
-Grab a line segment and move it.
+Grab a line segment or word and move it.
 
-1. Press `m` on a line.
-2. Move your cursor, and the edge moves with you.
-3. Press `m` again to stop dragging the edge.
+1. Press `m` on a line or word.
+2. Move your cursor, and the segment or word moves with you.
+3. Press `m` again to stop moving it.
 
 <img width="470" height="350" alt="move" src="https://github.com/user-attachments/assets/ecf0671a-415d-4ce8-bcd6-bbf804a8a93c" />
 
@@ -122,15 +121,15 @@ Switch line style by pressing `1`. `2`, or `3`. Current style will be shown in s
 
 Some keys are remapped to behave similarly to their original Vim functions while being better suited for drawing.
 
-| Key     | Action                                   |
-| ------- | ---------------------------------------- |
-| `?`     | Toggle Help in Sidebar                   |
-| `o/O`   | Insert a blank line while keeping cursor |
+| Key     | Action                                    |
+| ------- | ----------------------------------------- |
+| `?`     | Toggle Help in Sidebar                    |
+| `o/O`   | Insert a blank line while keeping cursor  |
 | `%`     | Jump to a connected segment end           |
 | `* / #` | Find the next / previous identical stroke |
-| `u`     | Undo                                     |
-| `<C-r>` | Redo                                     |
-| `<Esc>` | Exit                                     |
+| `u`     | Undo                                      |
+| `<C-r>` | Redo                                      |
+| `<Esc>` | Exit                                      |
 
 <img width="302" height="350" alt="cursor" src="https://github.com/user-attachments/assets/a0f7de41-f975-4cb9-97cf-c21854f59bce" />
 

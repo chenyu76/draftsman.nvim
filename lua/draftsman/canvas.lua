@@ -107,6 +107,63 @@ function M.char_reader()
 	end
 end
 
+-- Like * and #, prefer a keyword at or after the position, then punctuation.
+function M.word_at(row, col)
+	local cursor_byte, _, line = M.get_byte_range(row, col)
+	for _, pattern in ipairs({ [[\k\+]], [[\%(\k\@!\S\)\+]] }) do
+		local offset = 0
+		while true do
+			local match = vim.fn.matchstrpos(line, pattern, offset)
+			local word, start_byte, end_byte = match[1], match[2], match[3]
+			if start_byte == -1 then
+				break
+			end
+			if end_byte > cursor_byte then
+				local start_col = vim.fn.strdisplaywidth(line:sub(1, start_byte))
+				return word, start_col, vim.fn.strdisplaywidth(word, start_col)
+			end
+			offset = end_byte
+		end
+	end
+end
+
+-- Replace a fixed display span, preserving the cells outside it. Intersected
+-- tabs or wide characters become spaces where only part of them remains.
+function M.replace_span(row, col, width, text)
+	local line_count = vim.api.nvim_buf_line_count(0)
+	if row > line_count then
+		local lines = {}
+		for _ = line_count + 1, row do
+			lines[#lines + 1] = ""
+		end
+		vim.api.nvim_buf_set_lines(0, line_count, line_count, false, lines)
+	end
+	local line = vim.api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+	local prefix, suffix = {}, {}
+	local end_col = col + width
+	local line_width = 0
+	for char, _, start_col, char_width in line_cells(line, vim.bo.tabstop) do
+		local char_end = start_col + char_width
+		line_width = char_end
+		if char_end <= col then
+			prefix[#prefix + 1] = char
+		elseif start_col >= end_col then
+			suffix[#suffix + 1] = char
+		else
+			if start_col < col then
+				prefix[#prefix + 1] = string.rep(" ", col - start_col)
+			end
+			if char_end > end_col then
+				suffix[#suffix + 1] = string.rep(" ", char_end - end_col)
+			end
+		end
+	end
+	if line_width < col then
+		prefix[#prefix + 1] = string.rep(" ", col - line_width)
+	end
+	vim.api.nvim_buf_set_lines(0, row - 1, row, false, { table.concat(prefix) .. text .. table.concat(suffix) })
+end
+
 function M.set_char_at(row, virt_col, char)
 	local cur_r = vim.fn.line(".")
 	local cur_c = M.get_virt_col()
