@@ -9,7 +9,7 @@ local M = {}
 -- Helper: Update a char based on neighbor bitmask
 local function smart_merge(row, virt_col, new_mask_bits, mask_to_remove)
 	local current_char = canvas.get_char_at(row, virt_col)
-	local current_mask = state.char_to_mask[current_char] or 0
+	local current_mask = mech.char_to_mask(current_char)
 	local new_char = mech.resolve_char(current_mask, new_mask_bits, mask_to_remove)
 	if new_char then
 		canvas.set_char_at(row, virt_col, new_char)
@@ -27,11 +27,10 @@ function M.move_stroke_at(direction, row, col)
 	end
 	local get_char = canvas.char_reader()
 	local set_char = canvas.set_char_at
-	local char_map = state.char_to_mask
 	local bor, band, bnot = bit.bor, bit.band, bit.bnot
 
 	local char = get_char(row, col)
-	local mask = char_map[char] or 0
+	local mask = mech.char_to_mask(char)
 
 	if mask == 0 then
 		ui.update_status("No stroke to move.\nPlace cursor on a stroke character.")
@@ -87,10 +86,10 @@ function M.move_stroke_at(direction, row, col)
 		-- Pending changes take precedence over the original buffer.
 		local target_mask = 0
 		if changes[new_key] then
-			target_mask = char_map[changes[new_key].char] or 0
+			target_mask = mech.char_to_mask(changes[new_key].char)
 		else
 			local target_char = get_char(new_r, new_c)
-			target_mask = char_map[target_char] or 0
+			target_mask = mech.char_to_mask(target_char)
 		end
 
 		-- [Clean Background]: If collapsing, ensure we don't have conflicting bits
@@ -132,7 +131,7 @@ function M.jump_stroke_ends()
 	local r, c = canvas.get_cursor_virt_pos()
 	local get_char = canvas.char_reader()
 
-	local mask = state.char_to_mask[get_char(r, c)] or 0
+	local mask = mech.char_to_mask(get_char(r, c))
 	if mask == 0 then
 		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
 		vim.cmd("normal! " .. count .. "%")
@@ -164,7 +163,7 @@ function M.search_stroke(backward)
 	local r, c = canvas.get_cursor_virt_pos()
 	local get_char = canvas.char_reader()
 	local char = get_char(r, c)
-	if (state.char_to_mask[char] or 0) == 0 then
+	if mech.char_to_mask(char) == 0 then
 		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
 		vim.cmd("normal! " .. count .. (backward and "#" or "*"))
 		return
@@ -242,7 +241,7 @@ function M.move_cursor(direction)
 
 	if state.mode == "move" then
 		if r ~= old_r or c ~= old_c then
-			if (state.char_to_mask[canvas.get_char_at(old_r, old_c)] or 0) ~= 0 then
+			if mech.char_to_mask(canvas.get_char_at(old_r, old_c)) ~= 0 then
 				r, c = M.move_stroke_at(direction, old_r, old_c)
 			else
 				r, c = M.move_word_at(direction, old_r, old_c)

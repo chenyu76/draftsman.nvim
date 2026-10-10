@@ -83,8 +83,13 @@ function M.resolve_char(current_mask, add_bits, remove_mask)
 	return palette[final_mask]
 end
 
+-- Characters outside the stroke palette have no connections.
+function M.char_to_mask(char)
+	return state.char_to_mask[char] or 0
+end
+
 function M.char_to_direction(char)
-	return M.mask_to_direction(state.char_to_mask[char])
+	return M.mask_to_direction(M.char_to_mask(char))
 end
 
 function M.mask_to_direction(mask)
@@ -127,14 +132,14 @@ end
 -- A connection must be present on both sides of the shared edge.
 function M.connected_neighbor(row, col, direction, get_char)
 	local direction_bit = C.DIR_KEY_TO_BIT[direction]
-	local mask = state.char_to_mask[get_char(row, col)] or 0
+	local mask = M.char_to_mask(get_char(row, col))
 	if bit.band(mask, direction_bit) == 0 then
 		return nil
 	end
 
 	local next_r, next_c = M.direction_to_coord(direction, row, col)
 	local char = get_char(next_r, next_c)
-	local next_mask = state.char_to_mask[char] or 0
+	local next_mask = M.char_to_mask(char)
 	if bit.band(next_mask, C.OPPOSITE_BIT[direction_bit]) == 0 then
 		return nil
 	end
@@ -154,7 +159,7 @@ end
 
 function M.collect_stroke(row, col, directions, get_char)
 	local char = get_char(row, col)
-	local mask = state.char_to_mask[char] or 0
+	local mask = M.char_to_mask(char)
 	local nodes = {}
 	if mask == 0 then
 		return nodes
