@@ -55,7 +55,7 @@ function M.set_mappings(stop_callback)
 			ui.update_status("Ended Stroke.")
 		else
 			state.mode, state.last_dir = "stroke", nil
-			ui.update_status("Stroke Tool.\n<e> to commit.")
+			ui.update_status("Stroke Tool.\n<" .. key.stroke .. "> to commit.")
 		end
 	end)
 	map_and_record(key.arrow, function()
@@ -64,7 +64,7 @@ function M.set_mappings(stop_callback)
 			ui.update_status("Ended Arrow Draw.")
 		else
 			state.mode, state.last_dir = "arrow", nil
-			ui.update_status("Arrow Tool.\n<a> to commit.")
+			ui.update_status("Arrow Tool.\n<" .. key.arrow .. "> to commit.")
 		end
 	end)
 	map_and_record(key.move, function()
